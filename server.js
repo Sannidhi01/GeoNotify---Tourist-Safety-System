@@ -22,11 +22,11 @@ mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✓ MongoDB connected'))
-.catch(err => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
+  .then(() => console.log('✓ MongoDB connected'))
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // Enhanced Geofence Schema
 const geofenceSchema = new mongoose.Schema({
@@ -35,8 +35,8 @@ const geofenceSchema = new mongoose.Schema({
   reminder: { type: String, default: '' },
   coordinates: { type: [[Number]], required: true },
   nearMeters: { type: Number, default: 100 },
-  dangerLevel: { 
-    type: String, 
+  dangerLevel: {
+    type: String,
     enum: ['safe', 'caution', 'warning', 'danger', 'critical'],
     default: 'safe'
   },
@@ -52,10 +52,10 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   phone: { type: String },
-  role: { 
-    type: String, 
+  role: {
+    type: String,
     enum: ['tourist', 'admin', 'rescue'],
-    default: 'tourist' 
+    default: 'tourist'
   },
   subscribedGeofences: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Geofence' }],
   lastInside: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Geofence' }],
@@ -79,10 +79,10 @@ const User = mongoose.model('User', userSchema);
 const notificationLogSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   geofenceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Geofence', required: true },
-  notificationType: { 
-    type: String, 
+  notificationType: {
+    type: String,
     enum: ['entered', 'exited', 'near', 'danger_alert', 'rescue_alert'],
-    required: true 
+    required: true
   },
   dangerLevel: String,
   location: {
@@ -118,10 +118,10 @@ function sendPush(subscription, payload) {
 
 function generateToken(user) {
   const secret = process.env.JWT_SECRET || 'change_this_secret';
-  return jwt.sign({ 
-    id: user._id, 
+  return jwt.sign({
+    id: user._id,
     role: user.role,
-    email: user.email 
+    email: user.email
   }, secret, { expiresIn: '7d' });
 }
 
@@ -169,10 +169,10 @@ function requireAdminOrRescue(req, res, next) {
 async function notifyRescueTeam(tourist, geofence, location) {
   try {
     console.log(`🚨 RESCUE ALERT: ${tourist.name} in ${geofence.dangerLevel.toUpperCase()} zone: ${geofence.name}`);
-    
+
     // Find all rescue team members
     const rescueTeam = await User.find({ role: 'rescue', isActive: true });
-    
+
     if (rescueTeam.length === 0) {
       console.warn('⚠️  No rescue team members available');
       return false;
@@ -198,7 +198,7 @@ async function notifyRescueTeam(tourist, geofence, location) {
       requireInteraction: true,
       vibrate: [300, 100, 300, 100, 300]
     };
-    
+
     let notificationsSent = 0;
     for (const rescuer of rescueTeam) {
       const subs = rescuer.pushSubscriptions || [];
@@ -207,7 +207,7 @@ async function notifyRescueTeam(tourist, geofence, location) {
         notificationsSent++;
       }
     }
-    
+
     // Log the notification
     await NotificationLog.create({
       userId: tourist._id,
@@ -218,7 +218,7 @@ async function notifyRescueTeam(tourist, geofence, location) {
       rescueNotified: true,
       message: `Rescue team notified (${notificationsSent} notifications sent)`
     });
-    
+
     console.log(`✓ Rescue team notified: ${rescueTeam.length} members, ${notificationsSent} notifications sent`);
     return true;
   } catch (err) {
@@ -233,40 +233,40 @@ async function notifyRescueTeam(tourist, geofence, location) {
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password, phone, emergencyContact } = req.body;
-    
+
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
-    
+
     // Check if email already exists
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ error: 'Email already registered' });
     }
-    
+
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
-    
+
     // All new registrations are tourists by default
-    const user = await User.create({ 
-      name, 
-      email, 
+    const user = await User.create({
+      name,
+      email,
       passwordHash,
       phone: phone || '',
       role: 'tourist', // Default role
       emergencyContact: emergencyContact || {}
     });
-    
+
     const token = generateToken(user);
-    
-    res.json({ 
-      user: { 
-        id: user._id, 
-        name: user.name, 
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
         email: user.email,
         phone: user.phone,
         role: user.role
-      }, 
+      },
       token,
       message: 'Registration successful. Please login with your role.'
     });
@@ -280,52 +280,52 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
-    
+
     if (!email || !password || !role) {
       return res.status(400).json({ error: 'Email, password, and role are required' });
     }
-    
+
     if (!['tourist', 'admin', 'rescue'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be tourist, admin, or rescue' });
     }
-    
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     // Verify password
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
     if (!passwordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     // Check if user has permission for the requested role
     // For admin and rescue, the user must have that role in database
     if (role === 'admin' && user.role !== 'admin') {
       return res.status(403).json({ error: 'You do not have admin permissions' });
     }
-    
+
     if (role === 'rescue' && user.role !== 'rescue') {
       return res.status(403).json({ error: 'You do not have rescue team permissions' });
     }
-    
+
     // If logging in as tourist, allow regardless of actual role
     // This allows admins/rescue to also use tourist features
-    
+
     const token = generateToken(user);
-    
-    res.json({ 
-      user: { 
-        id: user._id, 
-        name: user.name, 
-        email: user.email, 
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
         phone: user.phone,
         role: user.role,
         loginAs: role
-      }, 
-      token 
+      },
+      token
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -339,22 +339,22 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/geofences', requireAdmin, async (req, res) => {
   try {
     const { name, description, reminder, coordinates, nearMeters, dangerLevel, autoNotifyRescue } = req.body;
-    
+
     if (!name || !Array.isArray(coordinates) || coordinates.length < 3) {
       return res.status(400).json({ error: 'Invalid input. Name and ≥3 coordinates required.' });
     }
 
-    const geofence = await Geofence.create({ 
-      name, 
+    const geofence = await Geofence.create({
+      name,
       description: description || '',
-      reminder: reminder || '', 
-      coordinates, 
+      reminder: reminder || '',
+      coordinates,
       nearMeters: nearMeters || 100,
       dangerLevel: dangerLevel || 'safe',
       autoNotifyRescue: autoNotifyRescue || false,
       createdBy: req.user._id
     });
-    
+
     res.json(geofence);
   } catch (err) {
     console.error('Create geofence error:', err);
@@ -366,13 +366,13 @@ app.post('/api/geofences', requireAdmin, async (req, res) => {
 app.put('/api/geofences/:id', requireAdmin, async (req, res) => {
   try {
     const { name, description, reminder, coordinates, nearMeters, dangerLevel, autoNotifyRescue } = req.body;
-    
+
     const updated = await Geofence.findByIdAndUpdate(
       req.params.id,
       { name, description, reminder, coordinates, nearMeters, dangerLevel, autoNotifyRescue },
       { new: true }
     );
-    
+
     if (!updated) return res.status(404).json({ error: 'Geofence not found' });
     res.json(updated);
   } catch (err) {
@@ -410,7 +410,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
       .select('-passwordHash -pushSubscriptions')
       .sort({ createdAt: -1 })
       .lean();
-    
+
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -422,7 +422,7 @@ app.get('/api/admin/user/:id/location', requireAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('name email currentLocation');
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
+
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -440,19 +440,19 @@ app.post('/api/users/:id/push-subscribe', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
+
     // Only allow users to subscribe their own notifications
     if (user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Unauthorized' });
     }
-    
+
     const sub = req.body.subscription;
     if (!sub) return res.status(400).json({ error: 'Subscription required' });
-    
+
     user.pushSubscriptions = user.pushSubscriptions || [];
     user.pushSubscriptions.push(sub);
     await user.save();
-    
+
     res.json({ ok: true });
   } catch (err) {
     console.error('Push subscribe error:', err);
@@ -465,7 +465,7 @@ app.get('/api/users/:id', requireAuth, async (req, res) => {
     const user = await User.findById(req.params.id)
       .select('-passwordHash')
       .lean();
-    
+
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (err) {
@@ -478,14 +478,14 @@ app.post('/api/users/:id/subscribe', requireAuth, async (req, res) => {
   try {
     const { fenceId } = req.body;
     const user = await User.findById(req.params.id);
-    
+
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
+
     if (!user.subscribedGeofences.includes(fenceId)) {
       user.subscribedGeofences.push(fenceId);
       await user.save();
     }
-    
+
     res.json({ message: 'Subscribed successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -497,13 +497,13 @@ app.post('/api/users/:id/unsubscribe', requireAuth, async (req, res) => {
   try {
     const { fenceId } = req.body;
     const user = await User.findById(req.params.id);
-    
+
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
+
     user.subscribedGeofences = user.subscribedGeofences.filter(f => f.toString() !== fenceId);
     user.lastInside = user.lastInside.filter(f => f.toString() !== fenceId);
     await user.save();
-    
+
     res.json({ message: 'Unsubscribed successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -516,7 +516,7 @@ app.get('/api/check', requireAuth, async (req, res) => {
   try {
     const lat = parseFloat(req.query.lat);
     const lng = parseFloat(req.query.lng);
-    
+
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       return res.status(400).json({ error: 'Valid lat & lng required' });
     }
@@ -534,34 +534,34 @@ app.get('/api/check', requireAuth, async (req, res) => {
       if (!first || !last || first[0] !== last[0] || first[1] !== last[1]) {
         coords.push(first);
       }
-      
+
       const poly = turf.polygon([coords]);
       const inPoly = turf.booleanPointInPolygon(point, poly);
-      
+
       if (inPoly) {
         inside.push(f);
         continue;
       }
-      
+
       // Check if near
       const line = turf.lineString(coords);
       const distMeters = turf.pointToLineDistance(point, line, { units: 'meters' });
       const thresholdMeters = f.nearMeters || 100;
-      
+
       if (distMeters <= thresholdMeters) {
         near.push({ ...f, distanceMeters: distMeters });
       }
     }
 
     const user = req.user;
-    
+
     // Update user's current location
     user.currentLocation = { lat, lng, timestamp: new Date() };
-    
+
     const subscribed = (user.subscribedGeofences || []).map(x => x.toString());
     const insideIds = inside.map(f => f._id.toString());
     const prevIds = (user.lastInside || []).map(x => x.toString());
-    
+
     const subscribedInside = inside.filter(f => subscribed.includes(f._id.toString()));
     const subscribedNear = near.filter(f => subscribed.includes(f._id.toString()));
 
@@ -576,20 +576,20 @@ app.get('/api/check', requireAuth, async (req, res) => {
       const userPayload = {
         title: `🚨 Entered ${f.dangerLevel.toUpperCase()} Zone`,
         body: `${f.name}: ${f.reminder || 'Stay alert!'}`,
-        data: { 
+        data: {
           type: 'entered',
           dangerLevel: f.dangerLevel,
-          geofenceId: f._id 
+          geofenceId: f._id
         },
         tag: `enter-${f._id}`,
         requireInteraction: ['danger', 'critical'].includes(f.dangerLevel)
       };
-      
+
       const subs = user.pushSubscriptions || [];
       for (const sub of subs) {
         await sendPush(sub, userPayload);
       }
-      
+
       // Log notification
       await NotificationLog.create({
         userId: user._id,
@@ -600,13 +600,13 @@ app.get('/api/check', requireAuth, async (req, res) => {
         userNotified: true,
         message: `User entered ${f.name}`
       });
-      
+
       // Notify rescue team if danger/critical zone
       if (f.autoNotifyRescue && ['danger', 'critical'].includes(f.dangerLevel)) {
         await notifyRescueTeam(user, f, { lat, lng });
       }
     }
-    
+
     // Check if user is currently in danger zones (periodic alerts)
     for (const f of subscribedInside) {
       if (f.autoNotifyRescue && ['danger', 'critical'].includes(f.dangerLevel)) {
@@ -617,31 +617,31 @@ app.get('/api/check', requireAuth, async (req, res) => {
           notificationType: 'rescue_alert',
           timestamp: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
         });
-        
+
         if (!recentAlert) {
           await notifyRescueTeam(user, f, { lat, lng });
         }
       }
     }
-    
+
     // Handle near zone alerts
     for (const f of subscribedNear) {
       const nearPayload = {
         title: `⚠️ Approaching ${f.dangerLevel.toUpperCase()} Zone`,
         body: `${f.name} is ${Math.round(f.distanceMeters)} meters away`,
-        data: { 
+        data: {
           type: 'near',
           dangerLevel: f.dangerLevel,
-          distance: f.distanceMeters 
+          distance: f.distanceMeters
         },
         tag: `near-${f._id}`
       };
-      
+
       const subs = user.pushSubscriptions || [];
       for (const sub of subs) {
         await sendPush(sub, nearPayload);
       }
-      
+
       await NotificationLog.create({
         userId: user._id,
         geofenceId: f._id,
@@ -652,7 +652,7 @@ app.get('/api/check', requireAuth, async (req, res) => {
         message: `User near ${f.name} (${Math.round(f.distanceMeters)}m)`
       });
     }
-    
+
     // Handle exit notifications
     for (const f of exited) {
       const exitPayload = {
@@ -661,12 +661,12 @@ app.get('/api/check', requireAuth, async (req, res) => {
         data: { type: 'exited' },
         tag: `exit-${f._id}`
       };
-      
+
       const subs = user.pushSubscriptions || [];
       for (const sub of subs) {
         await sendPush(sub, exitPayload);
       }
-      
+
       await NotificationLog.create({
         userId: user._id,
         geofenceId: f._id,
@@ -680,11 +680,11 @@ app.get('/api/check', requireAuth, async (req, res) => {
     user.lastInside = inside.map(f => f._id);
     await user.save();
 
-    res.json({ 
-      inside: subscribedInside, 
-      near: subscribedNear, 
-      entered, 
-      exited 
+    res.json({
+      inside: subscribedInside,
+      near: subscribedNear,
+      entered,
+      exited
     });
   } catch (err) {
     console.error('Location check error:', err);
@@ -703,7 +703,7 @@ app.get('/api/notifications', requireAdminOrRescue, async (req, res) => {
       .sort({ timestamp: -1 })
       .limit(100)
       .lean();
-    
+
     res.json(logs);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -717,9 +717,9 @@ app.get('/api/rescue/active-alerts', requireAdminOrRescue, async (req, res) => {
     const tourists = await User.find({ role: 'tourist' })
       .populate('lastInside')
       .lean();
-    
+
     const activeAlerts = [];
-    
+
     for (const tourist of tourists) {
       if (tourist.lastInside && tourist.lastInside.length > 0) {
         for (const geofence of tourist.lastInside) {
@@ -745,7 +745,7 @@ app.get('/api/rescue/active-alerts', requireAdminOrRescue, async (req, res) => {
         }
       }
     }
-    
+
     res.json(activeAlerts);
   } catch (err) {
     res.status(500).json({ error: err.message });
