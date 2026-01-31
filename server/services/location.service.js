@@ -121,7 +121,7 @@ async function handleNear(user, subscribedNear, location) {
 async function handleExited(user, exited, location) {
     for (const f of exited) {
         await notifyUser(user,
-            `✅ Exited ${f.name}`,
+            ` Exited ${f.name}`,
             f.reminder || 'You have left the area',
             { type: 'exited', tag: `exit-${f._id}` }
         );
