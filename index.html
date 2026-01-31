@@ -1,4 +1,4 @@
-<!doctype html>
+<!-- <!doctype html>
 <html>
 
 <head>
@@ -423,72 +423,68 @@
 
   <div id="map"></div>
 
-  <!-- Admin Controls Panel -->
-  <div class="panel" id="admin-controls" style="display:none;">
-    <h3>👑 Admin Controls</h3>
-    <input id="name" placeholder="Geofence name *" />
-    <textarea id="description" placeholder="Description (optional)"></textarea>
-    <textarea id="reminder" placeholder="Safety reminder (optional)"></textarea>
-    <button id="draw-start">✏️ Start Drawing</button>
-    <button id="save">💾 Save Geofence</button>
-    <button id="load">🔄 Reload Zones</button>
-    <small style="color:#666; display:block; margin-top:10px;">
-      Click map to add points. Need ≥3 points to save.
-    </small>
+  Admin Controls Panel -->
+<!-- <div class="panel" id="admin-controls" style="display:none;">
+  <h3>👑 Admin Controls</h3>
+  <input id="name" placeholder="Geofence name *" />
+  <textarea id="description" placeholder="Description (optional)"></textarea>
+  <textarea id="reminder" placeholder="Safety reminder (optional)"></textarea>
+  <button id="draw-start">✏️ Start Drawing</button>
+  <button id="save">💾 Save Geofence</button>
+  <button id="load">🔄 Reload Zones</button>
+  <small style="color:#666; display:block; margin-top:10px;">
+    Click map to add points. Need ≥3 points to save.
+  </small>
+</div>
+
+<div class="panel" id="tourist-controls" style="display:none;">
+  <h3>🧳 Tourist Controls</h3>
+  <button id="load">🔄 Reload Zones</button>
+  <button id="watch">▶️ Start Watch</button>
+  <button id="my-location">📍 My Location</button>
+  <div id="status"></div>
+</div>
+
+<div class="panel" id="rescue-controls" style="display:none;">
+  <h3>🚓 Rescue Team Dashboard</h3>
+  <div id="rescue-dashboard">
+    <p>Loading alerts...</p>
   </div>
+  <button id="load" style="background:#4CAF50; color:white;">🔄 Reload Zones</button>
+  <button id="my-location" style="background:#1976D2; color:white;">📍 My Location</button>
+</div>
 
-  <!-- Tourist Controls Panel -->
-  <div class="panel" id="tourist-controls" style="display:none;">
-    <h3>🧳 Tourist Controls</h3>
-    <button id="load">🔄 Reload Zones</button>
-    <button id="watch">▶️ Start Watch</button>
-    <button id="my-location">📍 My Location</button>
-    <div id="status"></div>
+<div id="auth-modal">
+  <div class="modal-content">
+    <h2 id="modal-title"></h2>
+    <div id="modal-content"></div>
   </div>
+</div>
 
-  <!-- Rescue Team Panel -->
-  <div class="panel" id="rescue-controls" style="display:none;">
-    <h3>🚓 Rescue Team Dashboard</h3>
-    <div id="rescue-dashboard">
-      <p>Loading alerts...</p>
-    </div>
-    <button id="load" style="background:#4CAF50; color:white;">🔄 Reload Zones</button>
-    <button id="my-location" style="background:#1976D2; color:white;">📍 My Location</button>
-  </div>
+<div class="info-box">
+  <h3>ℹ️ How GeoNotify Works</h3>
+  <ul>
+    <li><strong>👑 Admin:</strong> Create and manage geofenced zones. Set danger levels and configure automatic rescue
+      alerts.</li>
+    <li><strong>🧳 Tourist:</strong> Register, login, and subscribe to safety zones. Receive real-time alerts when
+      entering danger areas.</li>
+    <li><strong>🚓 Rescue Team:</strong> Monitor active danger alerts. Receive automatic notifications when tourists
+      enter critical zones.</li>
+    <li><strong>🚨 Auto-Rescue:</strong> Critical and danger zones automatically notify the rescue team with tourist
+      location and emergency contacts.</li>
+    <li><strong>📍 Real-time Tracking:</strong> Continuous location monitoring with distance-based proximity alerts.
+    </li>
+  </ul>
+</div>
 
-  <!-- Auth Modal -->
-  <div id="auth-modal">
-    <div class="modal-content">
-      <h2 id="modal-title"></h2>
-      <div id="modal-content"></div>
-    </div>
-  </div>
+<footer>
+  &copy; 2025 GeoNotify - Tourist Safety System | Powered by OpenStreetMap
+</footer>
 
-  <div class="info-box">
-    <h3>ℹ️ How GeoNotify Works</h3>
-    <ul>
-      <li><strong>👑 Admin:</strong> Create and manage geofenced zones. Set danger levels and configure automatic rescue
-        alerts.</li>
-      <li><strong>🧳 Tourist:</strong> Register, login, and subscribe to safety zones. Receive real-time alerts when
-        entering danger areas.</li>
-      <li><strong>🚓 Rescue Team:</strong> Monitor active danger alerts. Receive automatic notifications when tourists
-        enter critical zones.</li>
-      <li><strong>🚨 Auto-Rescue:</strong> Critical and danger zones automatically notify the rescue team with tourist
-        location and emergency contacts.</li>
-      <li><strong>📍 Real-time Tracking:</strong> Continuous location monitoring with distance-based proximity alerts.
-      </li>
-    </ul>
-  </div>
-
-  <footer>
-    &copy; 2025 GeoNotify - Tourist Safety System | Powered by OpenStreetMap
-  </footer>
-
-  <!-- Scripts -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-  <script src="app.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="app.js"></script>
 </body>
 
-</html>
+</html> -->
