@@ -1,0 +1,394 @@
+/* public/css/styles.css */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #e6f7e6;
+}
+
+/* Header Styles */
+header {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+header p {
+    font-size: 0.95rem;
+    margin: 5px 0 15px;
+    opacity: 0.9;
+}
+
+#user-info {
+    display: inline-block;
+    padding: 8px 15px;
+    border-radius: 20px;
+    margin: 10px 0 5px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+#auth-buttons {
+    margin-top: 10px;
+}
+
+#auth-buttons button {
+    margin: 0 5px;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+/* Button Styles */
+.btn-primary {
+    background: #fff;
+    color: #4CAF50;
+}
+
+.btn-primary:hover {
+    background: #f0f0f0;
+}
+
+.btn-secondary {
+    background: transparent;
+    color: #fff;
+    border: 2px solid #fff !important;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-logout {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-logout:hover {
+    background: #c0392b;
+}
+
+.btn-small {
+    padding: 5px 10px !important;
+    width: auto !important;
+    display: inline-block !important;
+    margin: 5px 5px 0 0 !important;
+    font-size: 0.85rem;
+}
+
+.btn-delete {
+    background: #e74c3c !important;
+    color: white !important;
+}
+
+.btn-delete:hover {
+    background: #c0392b !important;
+}
+
+/* Map Styles */
+#map {
+    height: 65vh;
+    width: 92%;
+    margin: 15px auto;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Panel Styles */
+.panel {
+    position: absolute;
+    left: 15px;
+    top: 120px;
+    z-index: 1000;
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    width: 260px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.panel h3 {
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #4CAF50;
+    font-size: 1.1rem;
+}
+
+.panel input,
+.panel textarea {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-family: inherit;
+}
+
+.panel textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.panel button {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.panel button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#admin-controls button,
+#tourist-controls button {
+    background: #4CAF50;
+    color: white;
+}
+
+#admin-controls button:hover,
+#tourist-controls button:hover {
+    background: #45a049;
+}
+
+#rescue-controls {
+    background: #ffe6e6;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+#status {
+    font-size: 13px;
+    color: #555;
+    margin-top: 10px;
+    padding: 8px;
+    background: #f0f0f0;
+    border-radius: 5px;
+}
+
+/* Info Box Styles */
+.info-box {
+    background: #fff;
+    padding: 20px;
+    margin: 15px auto;
+    width: 92%;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.info-box h3 {
+    margin-top: 0;
+    color: #4CAF50;
+}
+
+.info-box ul {
+    line-height: 1.8;
+}
+
+/* Danger Legend */
+.danger-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+}
+
+.danger-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    padding: 8px 15px;
+    background: #f9f9f9;
+    border-radius: 5px;
+}
+
+.danger-box {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+}
+
+/* Modal Styles */
+#auth-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+#modal-title {
+    margin: 0 0 20px 0;
+    color: #4CAF50;
+    font-size: 1.5rem;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 10px;
+}
+
+#modal-content input,
+#modal-content textarea {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+#modal-content button {
+    padding: 12px 24px;
+    margin: 5px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: 0.3s;
+}
+
+#modal-content .btn-primary {
+    background: #4CAF50;
+    color: white;
+}
+
+#modal-content .btn-primary:hover {
+    background: #45a049;
+}
+
+#modal-content .btn-secondary {
+    background: #ccc;
+    color: #333;
+}
+
+#modal-content .btn-secondary:hover {
+    background: #bbb;
+}
+
+#modal-content h4 {
+    margin: 20px 0 10px 0;
+    color: #333;
+}
+
+/* Role Selector */
+.role-selector {
+    margin: 15px 0;
+}
+
+.role-option {
+    display: block;
+    padding: 12px;
+    margin: 8px 0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.role-option:hover {
+    border-color: #4CAF50;
+    background: #f9f9f9;
+}
+
+.role-option input[type="radio"],
+.role-option input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.role-option span {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.role-option small {
+    color: #666;
+}
+
+/* Alert Card */
+.alert-card {
+    background: #fff3cd;
+    border-left: 4px solid #e74c3c;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+}
+
+.alert-card h5 {
+    margin: 0 0 10px 0;
+    color: #e74c3c;
+}
+
+.alert-card p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+}
+
+/* Footer */
+footer {
+    background: #4CAF50;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .panel {
+        width: calc(100% - 30px);
+        left: 15px;
+        top: 100px;
+    }
+
+    #map {
+        height: 50vh;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+}

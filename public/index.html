@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>GeoNotify - Tourist Safety System</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+</head>
+
+<body>
+
+    <header>
+        <h1>🌿 GeoNotify - Tourist Safety System</h1>
+        <p>Real-time geofencing with automatic rescue team alerts</p>
+        <div id="user-info"><em>Not logged in</em></div>
+        <div id="auth-buttons"></div>
+    </header>
+
+    <div class="info-box danger-legend">
+        <div class="danger-item">
+            <div class="danger-box" style="background:#007bff;"></div>
+            <span>✅ Safe</span>
+        </div>
+        <div class="danger-item">
+            <div class="danger-box" style="background:#FFFF00;"></div>
+            <span>⚡ Caution</span>
+        </div>
+        <div class="danger-item">
+            <div class="danger-box" style="background:#FFA500;"></div>
+            <span>⚠️ Warning</span>
+        </div>
+        <div class="danger-item">
+            <div class="danger-box" style="background:#FF0000;"></div>
+            <span>⚠️ Danger</span>
+        </div>
+        <div class="danger-item">
+            <div class="danger-box" style="background:#8B0000;"></div>
+            <span>🚨 Critical</span>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Admin Controls Panel -->
+    <div class="panel" id="admin-controls" style="display:none;">
+        <h3>👑 Admin Controls</h3>
+        <input id="name" placeholder="Geofence name *" />
+        <textarea id="description" placeholder="Description (optional)"></textarea>
+        <textarea id="reminder" placeholder="Safety reminder (optional)"></textarea>
+        <button id="draw-start">✏️ Start Drawing</button>
+        <button id="save">💾 Save Geofence</button>
+        <button id="load">🔄 Reload Zones</button>
+        <small style="color:#666; display:block; margin-top:10px;">
+            Click map to add points. Need ≥3 points to save.
+        </small>
+    </div>
+
+    <!-- Tourist Controls Panel -->
+    <div class="panel" id="tourist-controls" style="display:none;">
+        <h3>🧳 Tourist Controls</h3>
+        <button id="load">🔄 Reload Zones</button>
+        <button id="watch">▶️ Start Watch</button>
+        <button id="my-location">📍 My Location</button>
+        <div id="status"></div>
+    </div>
+
+    <!-- Rescue Team Panel -->
+    <div class="panel" id="rescue-controls" style="display:none;">
+        <h3>🚓 Rescue Team Dashboard</h3>
+        <div id="rescue-dashboard">
+            <p>Loading alerts...</p>
+        </div>
+        <button id="load" style="background:#4CAF50; color:white;">🔄 Reload Zones</button>
+        <button id="my-location" style="background:#1976D2; color:white;">📍 My Location</button>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal">
+        <div class="modal-content">
+            <h2 id="modal-title"></h2>
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h3>ℹ️ How GeoNotify Works</h3>
+        <ul>
+            <li><strong>👑 Admin:</strong> Create and manage geofenced zones. Set danger levels and configure automatic
+                rescue
+                alerts.</li>
+            <li><strong>🧳 Tourist:</strong> Register, login, and subscribe to safety zones. Receive real-time alerts
+                when
+                entering danger areas.</li>
+            <li><strong>🚓 Rescue Team:</strong> Monitor active danger alerts. Receive automatic notifications when
+                tourists
+                enter critical zones.</li>
+            <li><strong>🚨 Auto-Rescue:</strong> Critical and danger zones automatically notify the rescue team with
+                tourist
+                location and emergency contacts.</li>
+            <li><strong>📍 Real-time Tracking:</strong> Continuous location monitoring with distance-based proximity
+                alerts.
+            </li>
+        </ul>
+    </div>
+
+    <footer>
+        &copy; 2025 GeoNotify - Tourist Safety System | Powered by OpenStreetMap
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
