@@ -2,7 +2,7 @@
   "name": "geonotify",
   "version": "1.0.0",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server/server.js"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",
