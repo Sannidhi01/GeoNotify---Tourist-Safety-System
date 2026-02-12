@@ -62,7 +62,7 @@ async function handleEntered(user, entered, location) {
     for (const f of entered) {
         // Notify user
         await notifyUser(user,
-            `🚨 Entered ${f.dangerLevel.toUpperCase()} Zone`,
+            `Entered ${f.dangerLevel.toUpperCase()} Zone`,
             `${f.name}: ${f.reminder || 'Stay alert!'}`,
             {
                 type: 'entered',

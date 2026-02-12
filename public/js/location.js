@@ -35,14 +35,13 @@ export function initLocation(mapInstance) {
             (pos) => onPos(pos, mapInstance),
             err => {
                 console.error(err);
-                document.getElementById('status').textContent = '❌ Geolocation error';
+                document.getElementById('status').textContent = 'Geolocation error';
             },
             { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
         );
     });
 
     document.getElementById('my-location').addEventListener('click', () => showMyLocation(mapInstance));
-    // Duplicate ID fix: rescue panel also has my-location button
     const rescueLocBtn = document.querySelector('#rescue-controls #my-location');
     if (rescueLocBtn) {
         rescueLocBtn.addEventListener('click', () => showMyLocation(mapInstance));

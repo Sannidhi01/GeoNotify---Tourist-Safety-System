@@ -21,7 +21,6 @@ router.get('/', requireAdminOrRescue, async (req, res) => {
     }
 });
 
-// Get active alerts (rescue team dashboard)
 router.get('/active-alerts', requireAdminOrRescue, async (req, res) => {
     try {
         // Find tourists currently in danger zones

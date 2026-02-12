@@ -14,7 +14,6 @@ const {
 
 const router = express.Router();
 
-// Get VAPID public key
 router.get('/push/vapidPublicKey', (req, res) => {
     const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
     if (!VAPID_PUBLIC) {
@@ -52,7 +51,6 @@ router.post('/:id/push-subscribe', requireAuth, async (req, res) => {
     }
 });
 
-// Get user by ID
 router.get('/:id', requireAuth, async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
@@ -142,7 +140,6 @@ router.get('/check', requireAuth, async (req, res) => {
         await handleExited(user, exited, location);
         await checkPeriodicAlerts(user, subscribedInside, location);
 
-        // Update user state
         user.lastInside = inside.map(f => f._id);
         await user.save();
 
