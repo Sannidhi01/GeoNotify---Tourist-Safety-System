@@ -1,4 +1,3 @@
-// server/routes/auth.routes.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -6,7 +5,6 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// Generate JWT token
 function generateToken(user) {
     const secret = process.env.JWT_SECRET || 'change_this_secret';
     return jwt.sign({
@@ -15,11 +13,10 @@ function generateToken(user) {
         email: user.email
     }, secret, { expiresIn: '7d' });
 }
-
-// Register new user
+// register a new user
 router.post('/register', async (req, res) => {
     try {
-        const { name, email, password, phone, emergencyContact } = req.body;
+        const { name, email, password, phone, emergencyContact, role } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({
@@ -27,22 +24,22 @@ router.post('/register', async (req, res) => {
             });
         }
 
-        // Check if email already exists
         const existing = await User.findOne({ email });
         if (existing) {
             return res.status(400).json({ error: 'Email already registered' });
         }
 
-        // Hash password
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // Create user (tourist by default)
+        // Create user
+        const formattedRole = role && ['tourist', 'admin', 'rescue'].includes(role) ? role : 'tourist';
+
         const user = await User.create({
             name,
             email,
             passwordHash,
             phone: phone || '',
-            role: 'tourist',
+            role: formattedRole,
             emergencyContact: emergencyContact || {}
         });
 
@@ -82,13 +79,11 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Find user by email
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Verify password
         const passwordValid = await bcrypt.compare(password, user.passwordHash);
         if (!passwordValid) {
             return res.status(401).json({ error: 'Invalid credentials' });

@@ -1,4 +1,3 @@
-// public/js/auth.js
 import { API } from './config.js';
 import { updateUIForUser, closeModal } from './ui.js';
 import { loadFences } from './geofence.js';
@@ -38,6 +37,8 @@ export async function register() {
     }
 
     try {
+        const role = document.querySelector('input[name="reg-role"]:checked').value;
+
         const emergencyContact = (emName || emPhone) ? {
             name: emName,
             phone: emPhone,
@@ -47,7 +48,7 @@ export async function register() {
         const resp = await fetch(API + '/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, phone, emergencyContact })
+            body: JSON.stringify({ name, email, password, phone, role, emergencyContact })
         });
 
         if (!resp.ok) {

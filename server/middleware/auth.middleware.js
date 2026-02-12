@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Extract and verify JWT token
 async function authFromHeader(req) {
     const auth = req.headers.authorization || '';
     if (!auth.startsWith('Bearer ')) return null;
@@ -17,13 +16,11 @@ async function authFromHeader(req) {
     }
 }
 
-// Middleware to attach user to request
 async function attachUser(req, res, next) {
     req.user = await authFromHeader(req);
     next();
 }
 
-// Require authentication
 function requireAuth(req, res, next) {
     if (!req.user) {
         return res.status(401).json({ error: 'Authentication required' });
@@ -31,7 +28,6 @@ function requireAuth(req, res, next) {
     next();
 }
 
-// Require admin role
 function requireAdmin(req, res, next) {
     if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Admin access required' });
@@ -39,7 +35,6 @@ function requireAdmin(req, res, next) {
     next();
 }
 
-// Require admin or rescue role
 function requireAdminOrRescue(req, res, next) {
     if (!req.user || !['admin', 'rescue'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Admin or Rescue access required' });

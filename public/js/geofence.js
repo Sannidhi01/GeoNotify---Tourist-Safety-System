@@ -1,4 +1,3 @@
-// public/js/geofence.js
 import { API } from './config.js';
 import { getToken, getUserId, currentUser } from './auth.js';
 import { getDangerColor, getDangerEmoji, showDangerLevelModal, closeModal } from './ui.js';

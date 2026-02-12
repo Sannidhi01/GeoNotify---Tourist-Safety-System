@@ -13,10 +13,9 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
         VAPID_PRIVATE
     );
 } else {
-    console.warn('⚠️  VAPID keys not configured. Push notifications disabled.');
+    console.warn('VAPID keys not configured. Push notifications disabled.');
 }
 
-// Send push notification
 function sendPush(subscription, payload) {
     if (!VAPID_PUBLIC || !VAPID_PRIVATE) return Promise.resolve();
 
@@ -24,16 +23,14 @@ function sendPush(subscription, payload) {
         .catch(err => console.warn('Push send failed:', err.message));
 }
 
-// Notify rescue team about tourist in danger
 async function notifyRescueTeam(tourist, geofence, location) {
     try {
         console.log(`🚨 RESCUE ALERT: ${tourist.name} in ${geofence.dangerLevel.toUpperCase()} zone: ${geofence.name}`);
 
-        // Find all active rescue team members
         const rescueTeam = await User.find({ role: 'rescue', isActive: true });
 
         if (rescueTeam.length === 0) {
-            console.warn('⚠️  No rescue team members available');
+            console.warn(' No rescue team members available');
             return false;
         }
 

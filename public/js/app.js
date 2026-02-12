@@ -1,4 +1,3 @@
-// public/js/app.js
 import { initGeofence, loadFences } from './geofence.js';
 import { initLocation } from './location.js';
 import { getUserId, getToken, setCurrentUser } from './auth.js';
@@ -27,12 +26,10 @@ if (typeof L.Control.Geocoder !== 'undefined') {
         .addTo(map);
 }
 
-// Initialize Modules
 initGeofence(map);
 initLocation(map);
 startRescueUpdates();
 
-// Check Login State
 (async function init() {
     const storedUserId = getUserId();
     const storedToken = getToken();
@@ -48,7 +45,6 @@ startRescueUpdates();
                 setCurrentUser(user);
                 loadFences();
             } else {
-                // Invalid token or user
                 localStorage.clear();
                 updateUIForUser();
             }
@@ -60,10 +56,8 @@ startRescueUpdates();
         updateUIForUser();
     }
 
-    // Always load fences initially (public read)
     loadFences();
 
-    // Register Service Worker if supported
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
             .then(req => console.log('SW Registered'))
