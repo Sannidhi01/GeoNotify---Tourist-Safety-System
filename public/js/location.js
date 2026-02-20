@@ -1,4 +1,3 @@
-// public/js/location.js
 import { API } from './config.js';
 import { getToken, currentUser } from './auth.js';
 import { getDangerEmoji } from './ui.js';

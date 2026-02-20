@@ -5,7 +5,6 @@ import { updateUIForUser } from './ui.js';
 import { API } from './config.js';
 import { startRescueUpdates } from './rescue.js';
 
-// Initialize Map
 const map = L.map('map').setView([12.9716, 77.5946], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,

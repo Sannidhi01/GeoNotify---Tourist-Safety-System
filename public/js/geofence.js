@@ -85,11 +85,7 @@ export async function saveFence(name, description, reminder, coords) {
         const saved = await resp.json();
         alert(`✓ Saved ${dangerLevel.toUpperCase()} zone: ${saved.name}`);
 
-        // Reset drawing state (assuming mapInstance is available globally or we handle it differently if needed, 
-        // but here we might need to access the map to clear markers. 
-        // A cleaner way is to keep drawMarkers managed within this module, but we need map reference)
-        // Since we attached markers to map in init, we might need to rely on clearing them here if we kept reference or just reload
-        drawMarkers.forEach(m => m.remove()); // remove() works on layer
+        drawMarkers.forEach(m => m.remove());
         drawMarkers = [];
         currentCoords = [];
         drawMode = false;
@@ -106,7 +102,7 @@ export async function saveFence(name, description, reminder, coords) {
 }
 
 export async function loadFences() {
-    if (!drawnLayers) return; // Not initialized yet
+    if (!drawnLayers) return;
     drawnLayers.clearLayers();
 
     try {

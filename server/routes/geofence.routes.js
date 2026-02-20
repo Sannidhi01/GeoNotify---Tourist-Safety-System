@@ -1,4 +1,3 @@
-// server/routes/geofence.routes.js
 const express = require('express');
 const Geofence = require('../models/Geofence');
 const { requireAdmin } = require('../middleware/auth.middleware');
