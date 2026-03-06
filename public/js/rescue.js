@@ -48,4 +48,65 @@ export function startRescueUpdates() {
             loadRescueDashboard();
         }
     }, 10000);
+
+    // Set up Alerts History Modal Listeners
+    const btnViewAlerts = document.getElementById('view-all-alerts');
+    const modalAlerts = document.getElementById('alerts-history-modal');
+    const closeAlerts = document.querySelector('.close-alerts-modal');
+
+    if (btnViewAlerts && modalAlerts && closeAlerts) {
+        btnViewAlerts.onclick = () => {
+            modalAlerts.style.display = 'block';
+            loadAllAlertsHistory();
+        };
+
+        closeAlerts.onclick = () => {
+            modalAlerts.style.display = 'none';
+        };
+
+        // Close on outside click
+        window.addEventListener('click', (event) => {
+            if (event.target == modalAlerts) {
+                modalAlerts.style.display = 'none';
+            }
+        });
+    }
+}
+
+async function loadAllAlertsHistory() {
+    if (!currentUser || currentUser.role !== 'rescue') return;
+    const content = document.getElementById('alerts-history-content');
+    content.innerHTML = '<p>Loading history...</p>';
+
+    try {
+        const token = getToken();
+        const resp = await fetch(API + '/rescue', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!resp.ok) {
+            content.innerHTML = '<p>Failed to load alerts.</p>';
+            return;
+        }
+
+        const logs = await resp.json();
+        
+        if (logs.length === 0) {
+            content.innerHTML = '<p>No alerts found in history.</p>';
+            return;
+        }
+
+        content.innerHTML = logs.map(log => `
+            <div style="border-bottom: 1px solid #ccc; padding: 10px 0;">
+                <p style="margin:0;"><strong>Time:</strong> ${new Date(log.timestamp).toLocaleString()}</p>
+                <p style="margin:0;"><strong>User:</strong> ${log.userId ? (log.userId.name + ' (' + log.userId.email + ')') : 'Unknown'}</p>
+                <p style="margin:0;"><strong>Zone:</strong> ${log.geofenceId ? (log.geofenceId.name + ' [' + log.geofenceId.dangerLevel + ']') : 'Unknown'}</p>
+                <p style="margin:0;"><strong>Type:</strong> ${log.notificationType}</p>
+                <p style="margin:0;"><strong>Message:</strong> ${log.message}</p>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load alert history:', err);
+        content.innerHTML = '<p>Error loading history.</p>';
+    }
 }

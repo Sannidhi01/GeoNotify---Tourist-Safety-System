@@ -2,6 +2,7 @@ import { API } from './config.js';
 import { getToken, currentUser } from './auth.js';
 import { getDangerEmoji } from './ui.js';
 import { loadFences } from './geofence.js';
+import * as locService from './locationService.js';
 
 let watchId = null;
 let userMarker = null;
@@ -13,7 +14,7 @@ export function initLocation(mapInstance) {
         }
 
         if (watchId) {
-            navigator.geolocation.clearWatch(watchId);
+            locService.clearWatch(watchId);
             watchId = null;
             document.getElementById('watch').textContent = '▶️ Start Watch';
             document.getElementById('status').textContent = 'Stopped';
@@ -24,13 +25,11 @@ export function initLocation(mapInstance) {
             await Notification.requestPermission();
         }
 
-        if (!navigator.geolocation) return alert('Geolocation not supported');
-
         document.getElementById('watch').textContent = '⏹️ Stop Watch';
         document.getElementById('status').textContent = '🔍 Watching...';
         await loadFences();
 
-        watchId = navigator.geolocation.watchPosition(
+        watchId = locService.watchPosition(
             (pos) => onPos(pos, mapInstance),
             err => {
                 console.error(err);
@@ -45,12 +44,39 @@ export function initLocation(mapInstance) {
     if (rescueLocBtn) {
         rescueLocBtn.addEventListener('click', () => showMyLocation(mapInstance));
     }
+
+    // Simulation logic
+    let simulating = false;
+    const handleSimulationClick = (e) => {
+        const fakePos = { coords: { latitude: e.latlng.lat, longitude: e.latlng.lng } };
+        onPos(fakePos, mapInstance);
+    };
+
+    document.getElementById('simulate-movement').addEventListener('click', () => {
+        if (!currentUser) return alert('Please login first');
+        
+        const btn = document.getElementById('simulate-movement');
+        simulating = !simulating;
+        
+        if (simulating) {
+            alert('Simulation Mode ON: Click anywhere on the map to instantly move your location there.');
+            btn.textContent = '⏹️ Stop Simulation';
+            mapInstance.on('click', handleSimulationClick);
+            if (document.getElementById('status')) {
+                document.getElementById('status').textContent = 'Simulating... Click map';
+            }
+        } else {
+            btn.textContent = '🏃 Simulate Movement';
+            mapInstance.off('click', handleSimulationClick);
+            if (document.getElementById('status')) {
+                document.getElementById('status').textContent = 'Simulation stopped';
+            }
+        }
+    });
 }
 
 function showMyLocation(map) {
-    if (!navigator.geolocation) return alert('Geolocation not supported');
-
-    navigator.geolocation.getCurrentPosition(pos => {
+    locService.getCurrentPosition(pos => {
         const lat = pos.coords.latitude, lng = pos.coords.longitude;
         map.setView([lat, lng], 17);
 
@@ -62,6 +88,7 @@ function showMyLocation(map) {
         document.getElementById('status').textContent = 'Geolocation error';
     }, { enableHighAccuracy: true });
 }
+
 
 function updateUserMarker(lat, lng, map) {
     if (userMarker) map.removeLayer(userMarker);

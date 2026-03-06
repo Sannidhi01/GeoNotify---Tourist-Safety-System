@@ -12,7 +12,16 @@ const geofenceSchema = new mongoose.Schema({
         default: 'safe'
     },
     autoNotifyRescue: { type: Boolean, default: false },
+    timeRules: [{
+        startTime: String, // format "HH:mm"
+        endTime: String,   // format "HH:mm"
+        dangerLevel: {
+            type: String,
+            enum: ['safe', 'caution', 'warning', 'danger', 'critical']
+        }
+    }],
     createdBy: {
+
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },

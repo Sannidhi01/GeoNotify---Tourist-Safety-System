@@ -48,14 +48,7 @@ export function initGeofence(mapInstance) {
         showDangerLevelModal(name, description, reminder, currentCoords);
     });
 
-    document.getElementById('load').addEventListener('click', loadFences);
-    // Rescue panel reload button
-    const rescueLoadBtn = document.querySelector('#rescue-controls #load');
-    if (rescueLoadBtn) {
-        rescueLoadBtn.addEventListener('click', loadFences);
-    }
 }
-
 export async function saveFence(name, description, reminder, coords) {
     const nearMeters = parseInt(document.getElementById('near-meters').value) || 100;
     const dangerLevel = document.querySelector('input[name="danger"]:checked').value;
