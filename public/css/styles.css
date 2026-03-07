@@ -345,16 +345,45 @@ header p {
 
 /* Alert Card */
 .alert-card {
-    background: #fff3cd;
-    border-left: 4px solid #e74c3c;
     padding: 15px;
     margin: 10px 0;
-    border-radius: 5px;
+    border-radius: 8px;
+    border-left: 5px solid transparent;
+    transition: 0.3s;
+}
+
+.alert-danger {
+    background: #fff5f5;
+    border-color: #e74c3c;
+}
+
+.alert-approaching {
+    background: #fff9db;
+    border-color: #f1c40f;
 }
 
 .alert-card h5 {
     margin: 0 0 10px 0;
-    color: #e74c3c;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    color: white;
+    font-weight: bold;
+}
+
+.alert-danger .status-badge {
+    background: #e74c3c;
+}
+
+.alert-approaching .status-badge {
+    background: #f1c40f;
+    color: #333;
 }
 
 .alert-card p {
@@ -392,3 +421,57 @@ footer {
         font-size: 1.5rem;
     }
 }
+
+/* --- Map Visual Enhancements --- */
+
+/* Pulse animation for SVG polygons acting as danger zones */
+@keyframes dangerPulse {
+    0% {
+        fill-opacity: 0.3;
+        stroke-width: 3;
+    }
+    50% {
+        fill-opacity: 0.6;
+        stroke-width: 5;
+    }
+    100% {
+        fill-opacity: 0.3;
+        stroke-width: 3;
+    }
+}
+
+.polygon-pulse-danger {
+    animation: dangerPulse 1.5s infinite;
+    /* transition for smooth entry/exit */
+    transition: fill-opacity 0.3s, stroke-width 0.3s;
+}
+
+/* Map Vignette for Danger Zones */
+#map-vignette {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none; /* Let clicks pass through to the map */
+    z-index: 1000; /* Above map tiles, below popups ideally */
+    box-shadow: inset 0 0 0px rgba(255, 0, 0, 0);
+    transition: box-shadow 0.5s ease;
+    border-radius: 12px; /* Match map border radius */
+}
+
+@keyframes vignettePulse {
+    0% {
+        box-shadow: inset 0 0 30px rgba(255, 0, 0, 0.5);
+    }
+    50% {
+        box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.8);
+    }
+    100% {
+        box-shadow: inset 0 0 30px rgba(255, 0, 0, 0.5);
+    }
+}
+
+.map-vignette-danger {
+    animation: vignettePulse 2s infinite;
+}

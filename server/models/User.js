@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Geofence'
     }],
+    lastNear: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Geofence'
+    }],
     pushSubscriptions: { type: Array, default: [] },
     emergencyContact: {
         name: String,

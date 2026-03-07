@@ -29,7 +29,14 @@ function getEffectiveDangerLevel(f) {
     return f.dangerLevel;
 }
 
+function calculateEffectiveLevel(f) {
+    let baseLevel = getEffectiveDangerLevel(f);
+    let weather = getSimulatedWeather(f);
+    return adjustDangerLevelByWeather(baseLevel, weather);
+}
+
 // Check location against all geofences
+
 async function checkLocation(lat, lng, user) {
     const point = turf.point([lng, lat]);
     const fences = await Geofence.find().lean();
@@ -104,20 +111,24 @@ async function checkLocation(lat, lng, user) {
     // Update user's current location
     user.currentLocation = { lat, lng, timestamp: new Date() };
 
-    const subscribed = (user.subscribedGeofences || []).map(x => x.toString());
     const insideIds = inside.map(f => f._id.toString());
-    const prevIds = (user.lastInside || []).map(x => x.toString());
+    const nearIds = near.map(f => f._id.toString());
+    const prevInsideIds = (user.lastInside || []).map(x => x.toString());
+    const prevNearIds = (user.lastNear || []).map(x => x.toString());
 
-    const subscribedInside = inside.filter(f => subscribed.includes(f._id.toString()));
-    const subscribedNear = near.filter(f => subscribed.includes(f._id.toString()));
-
-    const entered = subscribedInside.filter(f => !prevIds.includes(f._id.toString()));
-    const exited = prevIds
+    const entered = inside.filter(f => !prevInsideIds.includes(f._id.toString()));
+    const exited = prevInsideIds
         .filter(id => !insideIds.includes(id))
         .map(id => fences.find(f => f._id.toString() === id))
-        .filter(f => f && subscribed.includes(f._id.toString()));
+        .filter(Boolean);
 
-    return { inside, subscribedInside, subscribedNear, entered, exited, fences };
+    // Track when user enters near threshold
+    const enteredNear = near.filter(f => !prevNearIds.includes(f._id.toString()));
+
+    user.lastInside = insideIds;
+    user.lastNear = nearIds;
+
+    return { inside, near, entered, exited, enteredNear, fences };
 }
 
 // Handle entered geofence notifications
@@ -158,13 +169,15 @@ async function handleEntered(user, entered, location) {
 }
 
 // Handle near geofence notifications
-async function handleNear(user, subscribedNear, location) {
-    for (const f of subscribedNear) {
+async function handleNear(user, near, location) {
+    for (const f of near) {
         const dLevel = f.effectiveDangerLevel || f.dangerLevel;
         const weatherText = f.weather && f.weather !== 'Clear' ? ` (Weather: ${f.weather})` : '';
+        
+        // Notify tourist proactively (from distance threshold)
         await notifyUser(user,
             `⚠️ Approaching ${dLevel.toUpperCase()} Zone${weatherText}`,
-            `${f.name} is ${Math.round(f.distanceMeters)} meters away`,
+            `${f.name} is ${Math.round(f.distanceMeters)} meters away. ${f.reminder || 'Be careful.'}`,
             {
                 type: 'near',
                 dangerLevel: dLevel,
@@ -183,6 +196,12 @@ async function handleNear(user, subscribedNear, location) {
             userNotified: true,
             message: `User near ${f.name} (${Math.round(f.distanceMeters)}m, Effective Level: ${dLevel}, Weather: ${f.weather || 'Clear'})`
         });
+
+        // Notify rescue team proactively if approaching a danger/critical zone
+        if (['danger', 'critical'].includes(dLevel)) {
+            // we will pass a custom flag to identify it as a "near" alert
+            await notifyRescueTeam(user, { ...f, isNear: true, distance: Math.round(f.distanceMeters) }, location);
+        }
     }
 }
 
@@ -207,8 +226,8 @@ async function handleExited(user, exited, location) {
 }
 
 // Check for periodic alerts for users in danger zones
-async function checkPeriodicAlerts(user, subscribedInside, location) {
-    for (const f of subscribedInside) {
+async function checkPeriodicAlerts(user, inside, location) {
+    for (const f of inside) {
         const dLevel = f.effectiveDangerLevel || f.dangerLevel;
         if (['danger', 'critical'].includes(dLevel)) {
             // Check if we haven't sent alert recently (5 min cooldown)
@@ -231,5 +250,6 @@ module.exports = {
     handleEntered,
     handleNear,
     handleExited,
-    checkPeriodicAlerts
+    checkPeriodicAlerts,
+    calculateEffectiveLevel
 };

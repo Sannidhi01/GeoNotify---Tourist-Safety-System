@@ -34,12 +34,17 @@ async function notifyRescueTeam(tourist, geofence, location) {
             return false;
         }
 
+        const isNear = !!geofence.isNear;
+        const alertType = isNear ? 'NEARBY' : (geofence.dangerLevel.toUpperCase());
+        const distanceText = isNear ? ` (approx. ${geofence.distance}m away)` : '';
+
         const alertPayload = {
-            title: `🚨 RESCUE ALERT - ${geofence.dangerLevel.toUpperCase()}`,
-            body: `Tourist ${tourist.name} detected in ${geofence.name}`,
+            title: `🚨 RESCUE ALERT - ${alertType}`,
+            body: `Tourist ${tourist.name} ${isNear ? 'is near' : 'entered'} ${geofence.name}${distanceText}`,
             data: {
                 type: 'rescue_alert',
-                touristId: tourist._id,
+                isNear,
+                distance: geofence.distance,
                 touristName: tourist.name,
                 touristPhone: tourist.phone || 'N/A',
                 touristEmail: tourist.email,

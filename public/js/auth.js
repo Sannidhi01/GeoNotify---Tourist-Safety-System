@@ -91,17 +91,13 @@ export async function login() {
         setCurrentUser(data.user);
 
         closeModal();
-        alert(`✓ Welcome ${data.user.name}! Logged in as ${role.toUpperCase()}`);
 
-        // Enable push notifications
+        // Enable push notifications (quietly)
         if ('serviceWorker' in navigator && 'PushManager' in window) {
-            if (confirm('Enable push notifications for alerts?')) {
-                try {
-                    await registerForPush();
-                    alert('✓ Push notifications enabled');
-                } catch (e) {
-                    console.warn('Push registration failed:', e);
-                }
+            try {
+                await registerForPush();
+            } catch (e) {
+                console.warn('Push registration failed:', e);
             }
         }
 

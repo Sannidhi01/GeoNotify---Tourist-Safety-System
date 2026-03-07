@@ -123,14 +123,9 @@ export async function loadFences() {
                 fillOpacity: 0.3
             }).addTo(drawnLayers);
 
-            const subscribed = user && Array.isArray(user.subscribedGeofences) &&
-                user.subscribedGeofences.map(String).includes(String(f._id));
+            fenceLayers[f._id] = poly;
 
-            const subBtn = uid ?
-                `<button id="btn-sub-${f._id}" class="btn-small">
-            ${subscribed ? '🔕 Unsubscribe' : '🔔 Subscribe'}
-          </button>` :
-                '<em>Login to subscribe</em>';
+            fenceLayers[f._id] = poly;
 
             const deleteBtn = (currentUser && currentUser.role === 'admin') ?
                 `<button id="btn-del-${f._id}" class="btn-delete">🗑️ Delete</button>` : '';
@@ -146,7 +141,6 @@ export async function loadFences() {
             <p style="margin:5px 0;"><small>Near threshold: ${f.nearMeters || 100}m</small></p>
             ${autoNotify}
             <div style="margin-top:10px;">
-              ${subBtn}
               ${deleteBtn}
             </div>
           </div>
@@ -155,17 +149,16 @@ export async function loadFences() {
             poly.bindPopup(popupContent);
 
             poly.on('popupopen', () => {
-                const btnSub = document.getElementById(`btn-sub-${f._id}`);
-                if (btnSub) {
-                    btnSub.onclick = () => {
-                        if (subscribed) unsubscribeFence(f._id);
-                        else subscribeFence(f._id);
-                    };
-                }
-
                 const btnDel = document.getElementById(`btn-del-${f._id}`);
                 if (btnDel) {
                     btnDel.onclick = () => deleteFence(f._id);
+                }
+            });
+
+            // Propagate clicks to the map if we are in simulation mode
+            poly.on('click', (e) => {
+                if (window.isSimulating) {
+                    drawnLayers._map.fire('click', e);
                 }
             });
         });
@@ -174,51 +167,7 @@ export async function loadFences() {
     }
 }
 
-export async function subscribeFence(fenceId) {
-    const uid = getUserId();
-    if (!uid) return alert('Please login first');
-
-    const token = getToken();
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-    };
-
-    try {
-        const resp = await fetch(API + `/users/${uid}/subscribe`, {
-            method: 'POST', headers, body: JSON.stringify({ fenceId })
-        });
-
-        if (!resp.ok) throw new Error('Subscribe failed');
-        alert('✓ Subscribed to alerts for this area');
-        loadFences();
-    } catch (err) {
-        alert(err.message);
-    }
-}
-
-export async function unsubscribeFence(fenceId) {
-    const uid = getUserId();
-    if (!uid) return alert('Please login first');
-
-    const token = getToken();
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-    };
-
-    try {
-        const resp = await fetch(API + `/users/${uid}/unsubscribe`, {
-            method: 'POST', headers, body: JSON.stringify({ fenceId })
-        });
-
-        if (!resp.ok) throw new Error('Unsubscribe failed');
-        alert('✓ Unsubscribed');
-        loadFences();
-    } catch (err) {
-        alert(err.message);
-    }
-}
+// Subscribe functions removed
 
 export async function deleteFence(id) {
     if (!currentUser || currentUser.role !== 'admin') {
@@ -241,4 +190,33 @@ export async function deleteFence(id) {
     } catch (err) {
         alert(' Error: ' + err.message);
     }
+}
+
+// Map Visual Enhancements
+export const fenceLayers = {};
+
+export function highlightFence(id, dangerLevel) {
+    const poly = fenceLayers[id];
+    if (!poly) return;
+
+    const el = poly.getElement();
+    if (el) {
+        if (['danger', 'critical'].includes(dangerLevel)) {
+            el.classList.add('polygon-pulse-danger');
+        } else {
+            poly.setStyle({ fillOpacity: 0.6, weight: 5 }); // Simple highlight for safe zones
+        }
+    }
+}
+
+export function resetFence(id) {
+    const poly = fenceLayers[id];
+    if (!poly) return;
+
+    const el = poly.getElement();
+    if (el) {
+        el.classList.remove('polygon-pulse-danger');
+    }
+    // Restore default style based on original options
+    poly.setStyle({ fillOpacity: 0.3, weight: 3 });
 }

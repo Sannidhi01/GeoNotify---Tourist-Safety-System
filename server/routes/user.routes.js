@@ -67,51 +67,6 @@ router.get('/:id', requireAuth, async (req, res) => {
     }
 });
 
-// Subscribe to geofence
-router.post('/:id/subscribe', requireAuth, async (req, res) => {
-    try {
-        const { fenceId } = req.body;
-        const user = await User.findById(req.params.id);
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (!user.subscribedGeofences.includes(fenceId)) {
-            user.subscribedGeofences.push(fenceId);
-            await user.save();
-        }
-
-        res.json({ message: 'Subscribed successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Unsubscribe from geofence
-router.post('/:id/unsubscribe', requireAuth, async (req, res) => {
-    try {
-        const { fenceId } = req.body;
-        const user = await User.findById(req.params.id);
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        user.subscribedGeofences = user.subscribedGeofences.filter(
-            f => f.toString() !== fenceId
-        );
-        user.lastInside = user.lastInside.filter(
-            f => f.toString() !== fenceId
-        );
-        await user.save();
-
-        res.json({ message: 'Unsubscribed successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // Check location against geofences
 router.get('/check', requireAuth, async (req, res) => {
     try {
@@ -128,26 +83,44 @@ router.get('/check', requireAuth, async (req, res) => {
         // Check location against all geofences
         const {
             inside,
-            subscribedInside,
-            subscribedNear,
+            near,
             entered,
-            exited
+            exited,
+            fences
         } = await checkLocation(lat, lng, user);
 
-        // Handle notifications
-        await handleEntered(user, entered, location);
-        await handleNear(user, subscribedNear, location);
-        await handleExited(user, exited, location);
-        await checkPeriodicAlerts(user, subscribedInside, location);
+        console.log(`[CHECK] User ${user.name} at ${lat}, ${lng}. Inside: ${inside.length}, Near: ${near.length}`);
 
-        user.lastInside = inside.map(f => f._id);
+        // Handle notifications (all zones are now implicitly subscribed)
+        await handleEntered(user, entered, location);
+        await handleNear(user, near, location);
+        await handleExited(user, exited, location);
+        await checkPeriodicAlerts(user, inside, location);
+
+        // Compute allEntered and allExited before updating user state
+        const prevIds = (user.lastInside || []).map(x => x.toString());
+        const insideIds = inside.map(f => f._id.toString());
+        const nearIds = near.map(f => f._id.toString());
+        
+        const allEntered = inside.filter(f => !prevIds.includes(f._id.toString()));
+        const allExited = prevIds.filter(id => !insideIds.includes(id)).map(id => {
+            return fences.find(f => f._id.toString() === id);
+        }).filter(Boolean);
+
+        user.lastInside = insideIds;
+        user.lastNear = nearIds;
+        user.markModified('lastInside');
+        user.markModified('lastNear');
+        user.markModified('currentLocation');
         await user.save();
 
         res.json({
-            inside: subscribedInside,
-            near: subscribedNear,
+            inside,
+            near,
             entered,
-            exited
+            exited,
+            allEntered,
+            allExited
         });
     } catch (err) {
         console.error('Location check error:', err);

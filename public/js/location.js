@@ -1,13 +1,24 @@
 import { API } from './config.js';
 import { getToken, currentUser } from './auth.js';
 import { getDangerEmoji } from './ui.js';
-import { loadFences } from './geofence.js';
+import { loadFences, highlightFence, resetFence } from './geofence.js';
 import * as locService from './locationService.js';
 
 let watchId = null;
 let userMarker = null;
+let userPathCoords = [];
+let userPathLine = null;
+let mapVignette = null;
 
 export function initLocation(mapInstance) {
+    // Inject map vignette for danger overlay
+    const mapContainer = document.getElementById('map');
+    if (mapContainer && !document.getElementById('map-vignette')) {
+        mapVignette = document.createElement('div');
+        mapVignette.id = 'map-vignette';
+        mapContainer.appendChild(mapVignette);
+    }
+
     document.getElementById('watch').addEventListener('click', async () => {
         if (!currentUser) {
             return alert('Please login first');
@@ -45,7 +56,6 @@ export function initLocation(mapInstance) {
         rescueLocBtn.addEventListener('click', () => showMyLocation(mapInstance));
     }
 
-    // Simulation logic
     let simulating = false;
     const handleSimulationClick = (e) => {
         const fakePos = { coords: { latitude: e.latlng.lat, longitude: e.latlng.lng } };
@@ -57,9 +67,10 @@ export function initLocation(mapInstance) {
         
         const btn = document.getElementById('simulate-movement');
         simulating = !simulating;
+        window.isSimulating = simulating; // Export for use in geofence.js clicks
         
         if (simulating) {
-            alert('Simulation Mode ON: Click anywhere on the map to instantly move your location there.');
+            alert('Simulation Mode ON: Click anywhere on the map (even inside zones) to instantly move your location there.');
             btn.textContent = '⏹️ Stop Simulation';
             mapInstance.on('click', handleSimulationClick);
             if (document.getElementById('status')) {
@@ -104,29 +115,101 @@ function updateUserMarker(lat, lng, map) {
     }).addTo(map);
 }
 
+// Map Visual Enhancements
+function updatePath(lat, lng, map, inDanger) {
+    userPathCoords.push({ lat, lng, inDanger });
+    
+    // To allow multi-colored paths, we redraw the whole path as multiple segments
+    if (userPathLine) {
+        if (Array.isArray(userPathLine)) {
+            userPathLine.forEach(segment => map.removeLayer(segment));
+        } else {
+            map.removeLayer(userPathLine); // In case it's still the old polyline object
+        }
+    }
+    userPathLine = [];
+    
+    if (userPathCoords.length > 0) {
+        for (let i = 0; i < userPathCoords.length - 1; i++) {
+            const p1 = userPathCoords[i];
+            const p2 = userPathCoords[i+1];
+            // Segment is dangerous if *either* point was in danger zone
+            const isSegmentDanger = p1.inDanger || p2.inDanger;
+            const segment = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], { 
+                color: isSegmentDanger ? '#e74c3c' : '#007bff', 
+                weight: 4 
+            }).addTo(map);
+            userPathLine.push(segment);
+        }
+    }
+}
+
+function updateVignette(inDanger) {
+    if (!mapVignette) return;
+    if (inDanger) {
+        mapVignette.classList.add('map-vignette-danger');
+    } else {
+        mapVignette.classList.remove('map-vignette-danger');
+    }
+}
+
 async function onPos(pos, map) {
     const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    const isSim = !!window.isSimulating;
+    
+    console.log(`[SIM:${isSim}] New location: ${lat}, ${lng}`);
     document.getElementById('status').textContent = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
-    // Optional: Auto-pan to user if tracking? 
-    // map.setView([lat, lng], map.getZoom()); 
     updateUserMarker(lat, lng, map);
 
     try {
         const token = getToken();
+        if (!token) {
+            console.warn('No auth token found, skipping check');
+            return;
+        }
+
         const resp = await fetch(
             API + '/users/check?' + new URLSearchParams({ lat: String(lat), lng: String(lng) }),
             { headers: { 'Authorization': 'Bearer ' + token } }
         );
 
-        if (!resp.ok) return;
+        if (!resp.ok) {
+            console.error('Location check failed:', resp.status);
+            return;
+        }
 
         const data = await resp.json();
+        console.log('Location check success:', data);
 
-        // Handle notifications
+        // Interpret current danger status
+        let inDanger = false;
+        if (data.inside) {
+            inDanger = data.inside.some(f => ['danger', 'critical'].includes(f.effectiveDangerLevel || f.dangerLevel));
+        }
+
+        updatePath(lat, lng, map, inDanger);
+        updateVignette(inDanger);
+
+        // Handle visual highlights (independent of subscription)
+        if (data.allEntered) {
+            data.allEntered.forEach(f => {
+                const dLevel = f.effectiveDangerLevel || f.dangerLevel;
+                highlightFence(f._id, dLevel);
+            });
+        }
+
+        if (data.allExited) {
+            data.allExited.forEach(f => {
+                resetFence(f._id);
+            });
+        }
+
+        // Handle notifications (requires subscription)
         if (data.entered) {
             data.entered.forEach(f => {
-                const emoji = getDangerEmoji(f.dangerLevel);
+                const dLevel = f.effectiveDangerLevel || f.dangerLevel;
+                const emoji = getDangerEmoji(dLevel);
                 notifyUser(`${emoji} Entered: ${f.name}`, f.reminder || 'Stay alert!');
             });
         }
@@ -139,10 +222,10 @@ async function onPos(pos, map) {
 
         if (data.near) {
             data.near.forEach(f => {
-                const emoji = getDangerEmoji(f.dangerLevel);
+                const emoji = getDangerEmoji(f.effectiveDangerLevel || f.dangerLevel);
                 notifyUser(
-                    `${emoji} Nearby: ${f.name}`,
-                    `${Math.round(f.distanceMeters)}m away - ${f.reminder || 'Be careful'}`
+                    `${emoji} Approaching Danger Zone`,
+                    `${Math.round(f.distanceMeters)}m away from ${f.name} - ${f.reminder || 'Be careful'}`
                 );
             });
         }
