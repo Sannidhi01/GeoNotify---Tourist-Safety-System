@@ -1,0 +1,72 @@
+import { API } from './config.js';
+import { getToken, currentUser } from './auth.js';
+
+let insightInterval = null;
+
+export async function initAIInsights() {
+    if (!currentUser) return;
+    
+    // Initial fetch
+    await fetchRiskInsights();
+
+    // Refresh every 60 seconds
+    if (insightInterval) clearInterval(insightInterval);
+    insightInterval = setInterval(fetchRiskInsights, 60000);
+}
+
+async function fetchRiskInsights() {
+    try {
+        const token = getToken();
+        if (!token) return;
+
+        const resp = await fetch(API + '/analytics/risk-insights', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!resp.ok) return;
+
+        const insights = await resp.json();
+        renderAIInsights(insights);
+    } catch (err) {
+        console.error('AI Insights fetch error:', err);
+    }
+}
+
+function renderAIInsights(insights) {
+    const list = document.getElementById('ai-insights-list');
+    if (!list) return;
+
+    if (insights.length === 0) {
+        list.innerHTML = '<p class="empty-state">No real-time risk data available.</p>';
+        return;
+    }
+
+    // Capture the top 3 highest risks
+    const topRisks = insights.slice(0, 3);
+
+    list.innerHTML = topRisks.map(ris => `
+        <div class="ai-insight-item risk-${ris.level.toLowerCase()}">
+            <div class="ai-header">
+                <strong>${ris.name}</strong>
+                <span class="ai-score-badge">${ris.score} / 100</span>
+            </div>
+            <div class="ai-body">
+                <p class="ai-recommendation">${ris.recommendation}</p>
+                <div class="ai-meta">
+                    <span>Incidents (24h): ${ris.incidentCountLast24h}</span>
+                    <span>Weather: ${ris.weather}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Function to update individual geofence risk (called from geofence.js)
+export function getRiskLevelColor(level) {
+    switch (level) {
+        case 'HIGH': return '#ef4444'; // Red
+        case 'MEDIUM': return '#f59e0b'; // Amber
+        case 'LOW': return '#10b981'; // Green
+        default: return '#6b7280';
+    }
+}

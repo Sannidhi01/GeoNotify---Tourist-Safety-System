@@ -125,33 +125,38 @@ export async function loadFences() {
 
             fenceLayers[f._id] = poly;
 
-            fenceLayers[f._id] = poly;
-
             const deleteBtn = (currentUser && currentUser.role === 'admin') ?
-                `<button id="btn-del-${f._id}" class="btn-delete">🗑️ Delete</button>` : '';
+                `<button id="btn-del-${f._id}" class="btn-delete" style="margin-top:10px; background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️ Delete</button>` : '';
 
             const autoNotify = f.autoNotifyRescue ?
                 '<br><strong style="color:#e74c3c;">🚓 Auto-notify rescue team</strong>' : '';
 
-            const popupContent = `
-          <div style="min-width:200px;">
-            <h3 style="margin:0 0 10px 0;">${emoji} ${escapeHtml(f.name)}</h3>
-            <p style="margin:5px 0;"><strong>Level:</strong> ${f.dangerLevel.toUpperCase()}</p>
-            <p style="margin:5px 0;">${escapeHtml(f.description || f.reminder)}</p>
-            <p style="margin:5px 0;"><small>Near threshold: ${f.nearMeters || 100}m</small></p>
-            ${autoNotify}
-            <div style="margin-top:10px;">
-              ${deleteBtn}
+            // Create popup content
+            let popupContent = `
+            <div class="geofence-popup" style="min-width:200px;">
+                <h5 style="margin:0 0 5px 0;">${emoji} ${f.name}</h5>
+                <p style="margin:5px 0;"><strong>Level:</strong> ${f.dangerLevel.toUpperCase()}</p>
+                <p style="margin:5px 0;">${f.description || f.reminder || 'No description'}</p>
+                <p style="margin:5px 0;"><small>Near threshold: ${f.nearMeters || 100}m</small></p>
+                ${autoNotify}
+                <div class="ai-risk-tag" style="background:#f3f4f6; padding:8px; border-radius:6px; margin-top:8px; font-size:0.85rem; border-left:4px solid #6366f1;">
+                    <strong style="color:#4f46e5;">🤖 AI PREDICTION:</strong><br>
+                    Area Risk Level: <span style="font-weight:bold; color:#ef4444;">ANALYZING...</span><br>
+                    <em style="font-size:0.75rem;">Check Safety Insights panel for live details.</em>
+                </div>
+                ${deleteBtn}
             </div>
-          </div>
         `;
-
+        
             poly.bindPopup(popupContent);
 
             poly.on('popupopen', () => {
                 const btnDel = document.getElementById(`btn-del-${f._id}`);
                 if (btnDel) {
-                    btnDel.onclick = () => deleteFence(f._id);
+                    btnDel.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteFence(f._id);
+                    };
                 }
             });
 

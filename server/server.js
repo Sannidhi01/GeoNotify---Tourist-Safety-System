@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth.routes');
 const geofenceRoutes = require('./routes/geofence.routes');
 const userRoutes = require('./routes/user.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const analyticsRoutes = require('./routes/analytics.routes'); // Added analyticsRoutes
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use('/api/geofences', geofenceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/rescue', notificationRoutes);
+app.use('/api/analytics', analyticsRoutes); // Mounted analyticsRoutes
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));

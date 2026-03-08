@@ -4,6 +4,7 @@ import { getUserId, getToken, setCurrentUser } from './auth.js';
 import { updateUIForUser } from './ui.js';
 import { API } from './config.js';
 import { startRescueUpdates } from './rescue.js';
+import { initAIInsights } from './ai-insights.js';
 
 const map = L.map('map').setView([12.9716, 77.5946], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -27,7 +28,6 @@ if (typeof L.Control.Geocoder !== 'undefined') {
 
 initGeofence(map);
 initLocation(map);
-startRescueUpdates();
 
 (async function init() {
     const storedUserId = getUserId();
@@ -42,17 +42,27 @@ startRescueUpdates();
             if (resp.ok) {
                 const user = await resp.json();
                 setCurrentUser(user);
-                loadFences();
             } else {
                 localStorage.clear();
-                updateUIForUser();
             }
         } catch (err) {
             console.error('Init error:', err);
-            updateUIForUser();
         }
-    } else {
-        updateUIForUser();
+    }
+
+    updateUIForUser();
+
+    // After user is set, apply role-based logic
+    if (currentUser) {
+        if (currentUser.role === 'admin') {
+            document.getElementById('admin-controls').style.display = 'block';
+        } else if (currentUser.role === 'rescue') {
+            document.getElementById('rescue-controls').style.display = 'block';
+            startRescueUpdates();
+        } else {
+            document.getElementById('ai-insights-panel').style.display = 'block';
+            initAIInsights();
+        }
     }
 
     loadFences();
