@@ -60,8 +60,16 @@ initLocation(map);
             document.getElementById('rescue-controls').style.display = 'block';
             startRescueUpdates();
         } else {
-            document.getElementById('ai-insights-panel').style.display = 'block';
-            initAIInsights();
+            document.getElementById('tourist-controls').style.display = 'block';
+        }
+        
+        // Show AI insights for everyone except admin (optional preference)
+        if (currentUser.role !== 'admin') {
+            const aiPanel = document.getElementById('ai-insights-panel');
+            if (aiPanel) {
+                aiPanel.style.display = 'block';
+                initAIInsights();
+            }
         }
     }
 

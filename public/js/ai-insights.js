@@ -51,9 +51,12 @@ function renderAIInsights(insights) {
                 <span class="ai-score-badge">${ris.score} / 100</span>
             </div>
             <div class="ai-body">
-                <p class="ai-recommendation">${ris.recommendation}</p>
-                <div class="ai-meta">
-                    <span>Incidents (24h): ${ris.incidentCountLast24h}</span>
+                <p class="ai-reasoning"><strong>Reason:</strong> ${ris.reasoning}</p>
+                <div class="ai-recommendation-box" style="margin-top:8px; padding:8px; background:white; border-radius:4px; font-weight:500;">
+                   💡 ${ris.recommendation}
+                </div>
+                <div class="ai-meta" style="margin-top:10px;">
+                    <span>Logs (24h): ${ris.incidentCountLast24h}</span>
                     <span>Weather: ${ris.weather}</span>
                 </div>
             </div>

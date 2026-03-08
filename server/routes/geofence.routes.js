@@ -26,7 +26,8 @@ router.post('/', requireAdmin, async (req, res) => {
             coordinates,
             nearMeters,
             dangerLevel,
-            autoNotifyRescue
+            autoNotifyRescue,
+            timeRules
         } = req.body;
 
         if (!name || !Array.isArray(coordinates) || coordinates.length < 3) {
@@ -43,6 +44,7 @@ router.post('/', requireAdmin, async (req, res) => {
             nearMeters: nearMeters || 100,
             dangerLevel: dangerLevel || 'safe',
             autoNotifyRescue: autoNotifyRescue || false,
+            timeRules: timeRules || [],
             createdBy: req.user._id
         });
 
@@ -63,7 +65,8 @@ router.put('/:id', requireAdmin, async (req, res) => {
             coordinates,
             nearMeters,
             dangerLevel,
-            autoNotifyRescue
+            autoNotifyRescue,
+            timeRules
         } = req.body;
 
         const updated = await Geofence.findByIdAndUpdate(
@@ -75,7 +78,8 @@ router.put('/:id', requireAdmin, async (req, res) => {
                 coordinates,
                 nearMeters,
                 dangerLevel,
-                autoNotifyRescue
+                autoNotifyRescue,
+                timeRules
             },
             { new: true }
         );

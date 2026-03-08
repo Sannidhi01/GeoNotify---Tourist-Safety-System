@@ -142,15 +142,36 @@ export function showLogin() {
   modal.style.display = 'flex';
 }
 
-export function closeModal() {
-  const modal = document.getElementById('auth-modal');
-  if (modal) modal.style.display = 'none';
+let tempTimeRules = [];
+
+function renderTimeRules() {
+  const list = document.getElementById('time-rules-list');
+  if (!list) return;
+
+  if (tempTimeRules.length === 0) {
+    list.innerHTML = '<p style="font-size:0.8rem; color:#999; font-style:italic;">No time-based rules set.</p>';
+    return;
+  }
+
+  list.innerHTML = tempTimeRules.map((rule, index) => `
+    <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:8px 12px; border-radius:6px; margin-bottom:5px; border:1px solid #eee; font-size:0.85rem;">
+      <span><strong>${rule.startTime} - ${rule.endTime}</strong>: <span style="color:${getDangerColor(rule.dangerLevel)}">${rule.dangerLevel.toUpperCase()}</span></span>
+      <button onclick="window.removeTimeRule(${index})" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:1.1rem; padding:0 5px;">&times;</button>
+    </div>
+  `).join('');
 }
+
+window.removeTimeRule = (index) => {
+  tempTimeRules.splice(index, 1);
+  renderTimeRules();
+};
 
 export function showDangerLevelModal(name, description, reminder, currentCoords) {
   const modal = document.getElementById('auth-modal');
   const title = document.getElementById('modal-title');
   const content = document.getElementById('modal-content');
+
+  tempTimeRules = []; // Reset for new/edit
 
   title.textContent = 'Configure Geofence';
   content.innerHTML = `
@@ -196,8 +217,36 @@ export function showDangerLevelModal(name, description, reminder, currentCoords)
         <input type="checkbox" id="auto-notify" style="width:auto; margin-right:10px;">
         <span>🚓 Auto-notify rescue team for danger/critical zones</span>
       </label>
+
+      <div style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;">
+        <h4 style="margin-bottom:10px;">🕒 Time-Based Rules</h4>
+        <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">Set different danger levels for specific times of day.</p>
+        
+        <div id="time-rules-list" style="margin-bottom:15px;">
+           <!-- Rules populated here -->
+        </div>
+
+        <div style="background:#f8f9fa; padding:10px; border-radius:6px; border:1px dashed #ccc;">
+            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                <input type="time" id="rule-start" style="margin:0;">
+                <span>to</span>
+                <input type="time" id="rule-end" style="margin:0;">
+                <select id="rule-level" style="margin:0; padding:5px;">
+                    <option value="safe">Safe</option>
+                    <option value="caution">Caution</option>
+                    <option value="warning">Warning</option>
+                    <option value="danger">Danger</option>
+                    <option value="critical">Critical</option>
+                </select>
+                <button type="button" id="btn-add-timerule" 
+                    style="padding:5px 12px; background:#4f46e5; color:white; border:none; border-radius:4px; cursor:pointer;">
+                    + Add
+                </button>
+            </div>
+        </div>
+      </div>
       
-      <button id="btn-save-fence" class="btn-primary">
+      <button id="btn-save-fence" class="btn-primary" style="margin-top:20px;">
         💾 Save Geofence
       </button>
       <button id="btn-save-cancel" class="btn-secondary">Cancel</button>
@@ -217,8 +266,39 @@ export function showDangerLevelModal(name, description, reminder, currentCoords)
 
   document.getElementById('btn-save-fence').onclick = () => saveFence(name, description, reminder, currentCoords);
   document.getElementById('btn-save-cancel').onclick = closeModal;
+
+  // Time Rule Listener
+  document.getElementById('btn-add-timerule').onclick = () => {
+    const start = document.getElementById('rule-start').value;
+    const end = document.getElementById('rule-end').value;
+    const level = document.getElementById('rule-level').value;
+
+    if (!start || !end) return alert('Please set both start and end times');
+
+    tempTimeRules.push({
+      startTime: start,
+      endTime: end,
+      dangerLevel: level
+    });
+
+    renderTimeRules();
+    
+    // Reset inputs
+    document.getElementById('rule-start').value = '';
+    document.getElementById('rule-end').value = '';
+  };
+
+  renderTimeRules();
 }
 
+export function closeModal() {
+  const modal = document.getElementById('auth-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+export function getTimeRules() {
+  return tempTimeRules;
+}
 export function getDangerColor(dangerLevel) {
   const colors = {
     'critical': '#8B0000',

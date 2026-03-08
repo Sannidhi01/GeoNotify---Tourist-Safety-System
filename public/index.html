@@ -72,13 +72,16 @@
         <div id="rescue-dashboard">
             <p>Loading alerts...</p>
         </div>
-        <div class="ai-panel" id="ai-insights-panel" style="display:none;">
-            <h3><span class="pulse-ai">✨</span> AI Safety Insights</h3>
-            <div id="ai-insights-list">
-                <p>Analyzing risk patterns...</p>
-            </div>
-        </div>
         <button id="view-all-alerts" style="background:#ff9800; color:white; margin-top:10px;">📋 View All Alerts History</button>
+    </div>
+
+    <!-- AI Insights Panel (Universal) -->
+    <div class="panel ai-panel" id="ai-insights-panel" style="display:none; margin-top:20px;">
+        <h3><span class="pulse-ai">✨</span> AI Safety Insights</h3>
+        <p style="font-size:0.8rem; color:#666; margin:-10px 0 10px 0;">Predictive analysis based on logs + weather + time</p>
+        <div id="ai-insights-list">
+            <p>Analyzing risk patterns...</p>
+        </div>
     </div>
 
     <!-- Alerts History Modal -->
@@ -117,6 +120,11 @@
                 location and emergency contacts.</li>
             <li><strong>📍 Real-time Tracking:</strong> Continuous location monitoring with distance-based proximity
                 alerts.
+            </li>
+            <li style="color:#6366f1;"><strong>✨ AI Prediction Rules:</strong>
+                <br>• 📈 <strong>Frequency:</strong> Risk ↑ if logs > 5 in last 24h.
+                <br>• ⛈️ <strong>Weather:</strong> Risk ↑ during Storms/Rain.
+                <br>• 🌙 <strong>Temporal:</strong> Risk ↑ between 10 PM and 5 AM.
             </li>
         </ul>
     </div>

@@ -1,6 +1,6 @@
 import { API } from './config.js';
 import { getToken, getUserId, currentUser } from './auth.js';
-import { getDangerColor, getDangerEmoji, showDangerLevelModal, closeModal } from './ui.js';
+import { getDangerColor, getDangerEmoji, showDangerLevelModal, closeModal, getTimeRules } from './ui.js';
 import { escapeHtml } from './utils.js';
 
 let drawMode = false;
@@ -66,6 +66,7 @@ export async function saveFence(name, description, reminder, coords) {
     const nearMeters = parseInt(document.getElementById('near-meters').value) || 100;
     const dangerLevel = document.querySelector('input[name="danger"]:checked').value;
     const autoNotifyRescue = document.getElementById('auto-notify').checked;
+    const timeRules = getTimeRules();
 
     try {
 
@@ -84,7 +85,8 @@ export async function saveFence(name, description, reminder, coords) {
                 coordinates: coords,
                 nearMeters,
                 dangerLevel,
-                autoNotifyRescue
+                autoNotifyRescue,
+                timeRules
             })
         });
 
@@ -155,151 +157,144 @@ export async function loadFences() {
         const uid = getUserId();
         let user = null;
 
+        console.log(`[Geofence] Found ${fences.length} fences to render.`);
+
         if (uid) {
-
-            const token = getToken();
-            const headers = { 'Authorization': 'Bearer ' + token };
-
-            const ur = await fetch(API + '/users/' + uid, { headers });
-
-            if (ur.ok) user = await ur.json();
-
+            try {
+                const token = getToken();
+                const headers = { 'Authorization': 'Bearer ' + token };
+                const ur = await fetch(API + '/users/' + uid, { headers });
+                if (ur.ok) user = await ur.json();
+            } catch (e) {
+                console.warn("Failed to fetch user context for geofences");
+            }
         }
 
         fences.forEach(f => {
+            try {
+                if (!f.coordinates || !Array.isArray(f.coordinates) || f.coordinates.length < 3) {
+                    console.warn(`[Geofence] Skipping fence ${f.name} due to invalid coordinates:`, f.coordinates);
+                    return;
+                }
 
-            const latlngs = f.coordinates.map(c => [c[1], c[0]]);
-            const emoji = getDangerEmoji(f.dangerLevel);
+                const latlngs = f.coordinates.map(c => [c[1], c[0]]);
+                const emoji = getDangerEmoji(f.dangerLevel);
 
-            let color = getDangerColor(f.dangerLevel);
+                let color = getDangerColor(f.dangerLevel);
 
-            const aiRisk = riskMap[f._id];
+                const aiRisk = riskMap[f._id];
 
-            if (aiRisk) {
+                if (aiRisk) {
+                    if (aiRisk.level === "HIGH") color = "#ef4444";
+                    if (aiRisk.level === "MEDIUM") color = "#f59e0b";
+                    if (aiRisk.level === "LOW") color = "#10b981";
+                }
 
-                if (aiRisk.level === "HIGH") color = "#ef4444";
-                if (aiRisk.level === "MEDIUM") color = "#f59e0b";
-                if (aiRisk.level === "LOW") color = "#10b981";
+                const poly = L.polygon(latlngs, {
+                    color: color,
+                    weight: 3,
+                    fillOpacity: 0.3
+                }).addTo(drawnLayers);
 
-            }
+                fenceLayers[f._id] = poly;
 
-            const poly = L.polygon(latlngs, {
-                color: color,
-                weight: 3,
-                fillOpacity: 0.3
-            }).addTo(drawnLayers);
+                const deleteBtn =
+                    (currentUser && currentUser.role === 'admin') ?
+                        `<button id="btn-del-${f._id}" class="btn-delete"
+                            style="margin-top:10px;background:#ff4444;color:white;
+                            border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">
+                            🗑️ Delete
+                        </button>` : '';
 
-            fenceLayers[f._id] = poly;
+                const autoNotify = f.autoNotifyRescue ?
+                    '<br><strong style="color:#e74c3c;">🚓 Auto-notify rescue team</strong>' : '';
 
-            const deleteBtn =
-                (currentUser && currentUser.role === 'admin') ?
-                    `<button id="btn-del-${f._id}" class="btn-delete"
-                        style="margin-top:10px;background:#ff4444;color:white;
-                        border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">
-                        🗑️ Delete
-                    </button>` : '';
+                /* ------------------- AI BLOCK ------------------- */
 
-            const autoNotify = f.autoNotifyRescue ?
-                '<br><strong style="color:#e74c3c;">🚓 Auto-notify rescue team</strong>' : '';
-
-            /* ------------------- AI BLOCK ------------------- */
-
-            let aiBlock = `
-                <div class="ai-risk-tag"
-                    style="background:#f3f4f6;padding:8px;border-radius:6px;margin-top:8px;
-                    font-size:0.85rem;border-left:4px solid #6366f1;">
-                    <strong style="color:#4f46e5;">🤖 AI PREDICTION:</strong><br>
-                    Area Risk Level:
-                    <span style="font-weight:bold;">Analyzing...</span>
-                </div>
-            `;
-
-            if (aiRisk) {
-
-                const riskColor =
-                    aiRisk.level === "HIGH" ? "#ef4444" :
-                    aiRisk.level === "MEDIUM" ? "#f59e0b" :
-                    "#10b981";
-
-                aiBlock = `
+                let aiBlock = `
                     <div class="ai-risk-tag"
                         style="background:#f3f4f6;padding:8px;border-radius:6px;margin-top:8px;
-                        font-size:0.85rem;border-left:4px solid ${riskColor};">
-
+                        font-size:0.85rem;border-left:4px solid #6366f1;">
                         <strong style="color:#4f46e5;">🤖 AI PREDICTION:</strong><br>
-
-                        Risk Level:
-                        <span style="font-weight:bold;color:${riskColor}">
-                        ${aiRisk.level}
-                        </span><br>
-
-                        Score: ${aiRisk.score}/100<br>
-                        Incidents (24h): ${aiRisk.incidentCountLast24h}<br>
-                        Weather: ${aiRisk.weather}<br>
-
-                        <em>${aiRisk.recommendation}</em>
-
+                        Area Risk Level:
+                        <span style="font-weight:bold;">Analyzing...</span>
                     </div>
                 `;
 
+                if (aiRisk) {
+                    const riskColor =
+                        aiRisk.level === "HIGH" ? "#ef4444" :
+                        aiRisk.level === "MEDIUM" ? "#f59e0b" :
+                        "#10b981";
+
+                    aiBlock = `
+                        <div class="ai-risk-tag"
+                            style="background:#f3f4f6;padding:10px;border-radius:8px;margin-top:10px;
+                            font-size:0.85rem;border-left:5px solid ${riskColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+
+                            <strong style="color:#4f46e5; display:block; margin-bottom:4px;">🤖 AI SAFETY ENGINE</strong>
+                            
+                            <div style="margin-bottom:8px; color:#475569;">
+                                <strong>Reasoning:</strong> ${aiRisk.reasoning || 'Analyzing factors...'}
+                            </div>
+
+                            <div style="background:white; padding:8px; border-radius:6px; border:1px solid ${riskColor}33;">
+                                <strong style="color:${riskColor};">Advice:</strong> ${aiRisk.recommendation}
+                            </div>
+
+                            <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8; display:flex; justify-content:space-between;">
+                                <span>Score: ${aiRisk.score}/100</span>
+                                <span>Factors: ${aiRisk.reasons.join(', ')}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                /* ----------------------------------------------- */
+
+                let popupContent = `
+                    <div class="geofence-popup" style="min-width:200px;">
+                        <h5 style="margin:0 0 5px 0;">
+                            ${emoji} ${f.name}
+                        </h5>
+                        <p style="margin:5px 0;">
+                            <strong>Level:</strong>
+                            ${f.dangerLevel.toUpperCase()}
+                        </p>
+                        <p style="margin:5px 0;">
+                            ${f.description || f.reminder || 'No description'}
+                        </p>
+                        <p style="margin:5px 0;">
+                            <small>Near threshold: ${f.nearMeters || 100}m</small>
+                        </p>
+                        ${autoNotify}
+                        ${aiBlock}
+                        ${deleteBtn}
+                    </div>
+                `;
+
+                poly.bindPopup(popupContent);
+
+                poly.on('popupopen', () => {
+                    const btnDel = document.getElementById(`btn-del-${f._id}`);
+                    if (btnDel) {
+                        btnDel.onclick = (e) => {
+                            e.stopPropagation();
+                            deleteFence(f._id);
+                        };
+                    }
+                });
+
+                poly.on('click', (e) => {
+                    if (window.isSimulating) {
+                        drawnLayers._map.fire('click', e);
+                    }
+                });
+
+                console.log(`[Geofence] Rendered ${f.name} with color ${color}`);
+            } catch (err) {
+                console.error(`[Geofence] Error rendering ${f.name}:`, err);
             }
-
-            /* ----------------------------------------------- */
-
-            let popupContent = `
-                <div class="geofence-popup" style="min-width:200px;">
-
-                    <h5 style="margin:0 0 5px 0;">
-                        ${emoji} ${f.name}
-                    </h5>
-
-                    <p style="margin:5px 0;">
-                        <strong>Level:</strong>
-                        ${f.dangerLevel.toUpperCase()}
-                    </p>
-
-                    <p style="margin:5px 0;">
-                        ${f.description || f.reminder || 'No description'}
-                    </p>
-
-                    <p style="margin:5px 0;">
-                        <small>Near threshold: ${f.nearMeters || 100}m</small>
-                    </p>
-
-                    ${autoNotify}
-
-                    ${aiBlock}
-
-                    ${deleteBtn}
-
-                </div>
-            `;
-
-            poly.bindPopup(popupContent);
-
-            poly.on('popupopen', () => {
-
-                const btnDel = document.getElementById(`btn-del-${f._id}`);
-
-                if (btnDel) {
-
-                    btnDel.onclick = (e) => {
-                        e.stopPropagation();
-                        deleteFence(f._id);
-                    };
-
-                }
-
-            });
-
-            poly.on('click', (e) => {
-
-                if (window.isSimulating) {
-                    drawnLayers._map.fire('click', e);
-                }
-
-            });
-
         });
 
     } catch (err) {
