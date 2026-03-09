@@ -1,7 +1,7 @@
 import { API } from './config.js';
 import { updateUIForUser, closeModal } from './ui.js';
 import { loadFences } from './geofence.js';
-import { loadRescueDashboard } from './rescue.js';
+import { loadRescueDashboard, stopRescueUpdates } from './rescue.js';
 import { urlBase64ToUint8Array } from './utils.js';
 
 export let currentUser = null;
@@ -17,6 +17,7 @@ export function setCurrentUser(user) {
 export function logout() {
     localStorage.clear();
     currentUser = null;
+    stopRescueUpdates();
     updateUIForUser();
     alert('✓ Logged out successfully');
     location.reload();
@@ -103,8 +104,8 @@ export async function login() {
 
         loadFences();
 
-        // Load dashboard based on role
-        if (role === 'rescue') {
+        // Load dashboard based on actual user role from server
+        if (data.user.role === 'rescue') {
             loadRescueDashboard();
         }
     } catch (err) {

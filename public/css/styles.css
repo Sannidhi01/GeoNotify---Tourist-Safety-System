@@ -113,7 +113,6 @@ header p {
 .panel {
     position: absolute;
     left: 15px;
-    top: 120px;
     z-index: 1000;
     background: white;
     padding: 15px;

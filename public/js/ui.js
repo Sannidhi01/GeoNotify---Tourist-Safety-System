@@ -1,5 +1,21 @@
 import { currentUser, logout, register, login } from './auth.js';
 import { loadFences, saveFence } from './geofence.js';
+import { stopRescueUpdates } from './rescue.js';
+
+export function positionPanels() {
+    const panels = ['admin-controls', 'tourist-controls', 'rescue-controls', 'ai-insights-panel'];
+    let currentTop = 120; // Start below the header
+
+    panels.forEach(panelId => {
+        const panel = document.getElementById(panelId);
+        if (panel && panel.style.display !== 'none') {
+            panel.style.top = currentTop + 'px';
+            // Add some spacing between panels
+            const panelHeight = panel.offsetHeight || 200; // fallback height
+            currentTop += panelHeight + 20; // 20px gap
+        }
+    });
+}
 
 export function updateUIForUser() {
   const userInfo = document.getElementById('user-info');
@@ -37,8 +53,17 @@ export function updateUIForUser() {
     document.getElementById('rescue-controls').style.display =
       currentUser.role === 'rescue' ? 'block' : 'none';
 
+    // Stop rescue updates if user is not a rescue user
+    if (currentUser.role !== 'rescue') {
+        stopRescueUpdates();
+    }
+
     document.getElementById('tourist-controls').style.display =
       currentUser.role === 'tourist' ? 'block' : 'none';
+
+    // Hide AI insights for non-admin users
+    document.getElementById('ai-insights-panel').style.display =
+      currentUser.role === 'admin' ? 'block' : 'none';
   } else {
     userInfo.innerHTML = '<em>Not logged in</em>';
     authButtons.innerHTML = `
@@ -51,7 +76,11 @@ export function updateUIForUser() {
     document.getElementById('admin-controls').style.display = 'none';
     document.getElementById('rescue-controls').style.display = 'none';
     document.getElementById('tourist-controls').style.display = 'none';
+    document.getElementById('ai-insights-panel').style.display = 'none';
   }
+
+  // Position panels to avoid overlap
+  setTimeout(positionPanels, 50);
 }
 
 export function showRegister() {

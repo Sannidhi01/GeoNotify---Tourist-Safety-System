@@ -64,6 +64,12 @@ export async function loadRescueDashboard() {
         console.error('Load rescue dashboard error:', err);
     }
 }
+export function stopRescueUpdates() {
+    if (rescueInterval) {
+        clearInterval(rescueInterval);
+        rescueInterval = null;
+    }
+}
 
 export function startRescueUpdates() {
     // Refresh rescue dashboard every 10 seconds

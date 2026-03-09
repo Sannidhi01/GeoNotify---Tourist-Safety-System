@@ -22,6 +22,89 @@ router.get('/push/vapidPublicKey', (req, res) => {
     res.json({ publicKey: VAPID_PUBLIC });
 });
 
+router.get('/check', requireAuth, async (req, res) => {
+    try {
+
+        const lat = parseFloat(req.query.lat);
+        const lng = parseFloat(req.query.lng);
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return res.status(400).json({ error: "Valid lat & lng required" });
+        }
+
+        // ALWAYS fetch fresh user from MongoDB
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // IMPORTANT: only tourists send GPS
+        if (user.role !== "tourist") {
+            return res.status(403).json({ error: "Only tourists can send location updates" });
+        }
+
+        const location = { lat, lng };
+
+        console.log(`[LOCATION CHECK] ${user.name} (${user.role}) at ${lat}, ${lng}`);
+
+        // check geofences
+        const {
+            inside,
+            near,
+            entered,
+            exited,
+            fences
+        } = await checkLocation(lat, lng, user);
+
+        // handle alerts
+        await handleEntered(user, entered, location);
+        await handleNear(user, near, location);
+        await handleExited(user, exited, location);
+        await checkPeriodicAlerts(user, inside, location);
+
+        const prevIds = (user.lastInside || []).map(x => x.toString());
+        const insideIds = inside.map(f => f._id.toString());
+        const nearIds = near.map(f => f._id.toString());
+
+        const allEntered = inside.filter(
+            f => !prevIds.includes(f._id.toString())
+        );
+
+        const allExited = prevIds
+            .filter(id => !insideIds.includes(id))
+            .map(id => fences.find(f => f._id.toString() === id))
+            .filter(Boolean);
+
+        // update user state
+        user.lastInside = insideIds;
+        user.lastNear = nearIds;
+
+        // update live location
+        user.currentLocation = {
+            lat,
+            lng,
+            timestamp: new Date()
+        };
+
+        await user.save();
+
+        console.log(`[LOCATION SAVED] ${user.name} -> ${lat}, ${lng}`);
+
+        res.json({
+            inside,
+            near,
+            entered,
+            exited,
+            allEntered,
+            allExited
+        });
+
+    } catch (err) {
+        console.error("Location check error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
 // Subscribe to push notifications
 router.post('/:id/push-subscribe', requireAuth, async (req, res) => {
     try {
@@ -51,6 +134,7 @@ router.post('/:id/push-subscribe', requireAuth, async (req, res) => {
     }
 });
 
+
 router.get('/:id', requireAuth, async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
@@ -67,66 +151,6 @@ router.get('/:id', requireAuth, async (req, res) => {
     }
 });
 
-// Check location against geofences
-router.get('/check', requireAuth, async (req, res) => {
-    try {
-        const lat = parseFloat(req.query.lat);
-        const lng = parseFloat(req.query.lng);
-
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            return res.status(400).json({ error: 'Valid lat & lng required' });
-        }
-
-        const user = req.user;
-        const location = { lat, lng };
-
-        // Check location against all geofences
-        const {
-            inside,
-            near,
-            entered,
-            exited,
-            fences
-        } = await checkLocation(lat, lng, user);
-
-        console.log(`[CHECK] User ${user.name} at ${lat}, ${lng}. Inside: ${inside.length}, Near: ${near.length}`);
-
-        // Handle notifications (all zones are now implicitly subscribed)
-        await handleEntered(user, entered, location);
-        await handleNear(user, near, location);
-        await handleExited(user, exited, location);
-        await checkPeriodicAlerts(user, inside, location);
-
-        // Compute allEntered and allExited before updating user state
-        const prevIds = (user.lastInside || []).map(x => x.toString());
-        const insideIds = inside.map(f => f._id.toString());
-        const nearIds = near.map(f => f._id.toString());
-        
-        const allEntered = inside.filter(f => !prevIds.includes(f._id.toString()));
-        const allExited = prevIds.filter(id => !insideIds.includes(id)).map(id => {
-            return fences.find(f => f._id.toString() === id);
-        }).filter(Boolean);
-
-        user.lastInside = insideIds;
-        user.lastNear = nearIds;
-        user.markModified('lastInside');
-        user.markModified('lastNear');
-        user.markModified('currentLocation');
-        await user.save();
-
-        res.json({
-            inside,
-            near,
-            entered,
-            exited,
-            allEntered,
-            allExited
-        });
-    } catch (err) {
-        console.error('Location check error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // Track all tourists (admin only)
 router.get('/admin/users', requireAdmin, async (req, res) => {

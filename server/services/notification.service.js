@@ -20,9 +20,15 @@ function sendPush(subscription, payload) {
     if (!VAPID_PUBLIC || !VAPID_PRIVATE) return Promise.resolve();
 
     return webpush.sendNotification(subscription, JSON.stringify(payload))
-        .catch(err => console.warn('Push send failed:', err.message));
-}
+        .catch(err => {
+            console.warn('Push send failed:', err.statusCode, err.body);
 
+            // Remove expired subscriptions
+            if (err.statusCode === 410 || err.statusCode === 404) {
+                console.log("Removing expired subscription");
+            }
+        });
+}
 async function notifyRescueTeam(tourist, geofence, location) {
     try {
         console.log(`🚨 RESCUE ALERT: ${tourist.name} in ${geofence.dangerLevel.toUpperCase()} zone: ${geofence.name}`);
@@ -89,16 +95,38 @@ async function notifyRescueTeam(tourist, geofence, location) {
 }
 
 // Send notification to user
+// store last notification times
+const userNotificationCooldown = new Map();
+
 async function notifyUser(user, title, body, data = {}) {
+
+    const cooldownTime = 2 * 60 * 1000; // 2 minutes
+
+    const key = `${user._id}-${data.tag || "notification"}`;
+    const now = Date.now();
+
+    const lastSent = userNotificationCooldown.get(key);
+
+    // if notification sent recently, skip
+    if (lastSent && now - lastSent < cooldownTime) {
+        return;
+    }
+
+    // update last sent time
+    userNotificationCooldown.set(key, now);
+
     const payload = {
-        title,
-        body,
-        data,
-        tag: data.tag || 'notification',
-        requireInteraction: data.requireInteraction || false
-    };
+    title,
+    body,
+    icon: "/icon.png",
+    badge: "/icon.png",
+    data,
+    tag: data.tag || 'notification',
+    requireInteraction: data.requireInteraction || false
+};
 
     const subs = user.pushSubscriptions || [];
+
     for (const sub of subs) {
         await sendPush(sub, payload);
     }

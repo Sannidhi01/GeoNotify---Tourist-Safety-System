@@ -170,14 +170,50 @@ async function handleEntered(user, entered, location) {
 
 // Handle near geofence notifications
 async function handleNear(user, near, location) {
+
+    const { generateSafetyAdvice } = require('./openrouter.service');
+
     for (const f of near) {
+
         const dLevel = f.effectiveDangerLevel || f.dangerLevel;
-        const weatherText = f.weather && f.weather !== 'Clear' ? ` (Weather: ${f.weather})` : '';
-        
-        // Notify tourist proactively (from distance threshold)
-        await notifyUser(user,
+        const weatherText = f.weather && f.weather !== 'Clear'
+            ? ` (Weather: ${f.weather})`
+            : '';
+
+        // AI CONTEXT
+        const aiContext = {
+            geofenceName: f.name,
+            baseDangerLevel: f.dangerLevel,
+            effectiveDangerLevel: dLevel,
+            weather: f.weather || "Clear",
+            hour: new Date().getHours(),
+            incidentCount: 0,
+            hotspotsOccurred: false,
+            touristDistance: Math.round(f.distanceMeters),
+            threshold: f.nearMeters || 100,
+            touristEnteredTime: user.currentLocation?.timestamp,
+            timeRules: f.timeRules || []
+        };
+
+        // CALL AI
+        let aiAdvice = null;
+
+        try {
+            aiAdvice = await generateSafetyAdvice(aiContext);
+        } catch (err) {
+            console.log("AI failed, using fallback");
+        }
+
+        const adviceText =
+            aiAdvice?.recommendation ||
+            f.reminder ||
+            "Be careful.";
+
+        // SEND USER NOTIFICATION
+        await notifyUser(
+            user,
             `⚠️ Approaching ${dLevel.toUpperCase()} Zone${weatherText}`,
-            `${f.name} is ${Math.round(f.distanceMeters)} meters away. ${f.reminder || 'Be careful.'}`,
+            `${f.name} is ${Math.round(f.distanceMeters)}m away. ${adviceText}`,
             {
                 type: 'near',
                 dangerLevel: dLevel,
@@ -187,6 +223,7 @@ async function handleNear(user, near, location) {
             }
         );
 
+        // SAVE LOG
         await NotificationLog.create({
             userId: user._id,
             geofenceId: f._id,
@@ -194,16 +231,21 @@ async function handleNear(user, near, location) {
             dangerLevel: dLevel,
             location: location,
             userNotified: true,
-            message: `User near ${f.name} (${Math.round(f.distanceMeters)}m, Effective Level: ${dLevel}, Weather: ${f.weather || 'Clear'})`
+            message: `User near ${f.name} is ${Math.round(f.distanceMeters)}m away. ${adviceText}`
         });
 
-        // Notify rescue team proactively if approaching a danger/critical zone
+        // Notify rescue if danger
         if (['danger', 'critical'].includes(dLevel)) {
-            // we will pass a custom flag to identify it as a "near" alert
-            await notifyRescueTeam(user, { ...f, isNear: true, distance: Math.round(f.distanceMeters) }, location);
+            await notifyRescueTeam(
+                user,
+                { ...f, isNear: true, distance: Math.round(f.distanceMeters) },
+                location
+            );
         }
     }
 }
+
+        
 
 // Handle exited geofence notifications
 async function handleExited(user, exited, location) {

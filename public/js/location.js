@@ -204,6 +204,16 @@ async function onPos(pos, map) {
                 resetFence(f._id);
             });
         }
+        if (data.near) {
+    data.near.forEach(f => {
+
+        notifyUser(
+            "⚠️ Approaching Risk Zone",
+            `${f.name} within ${Math.round(f.distanceMeters)}m`
+        );
+
+    });
+}
 
         // Handle notifications (requires subscription)
         if (data.entered) {

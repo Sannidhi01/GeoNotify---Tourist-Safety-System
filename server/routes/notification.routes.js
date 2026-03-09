@@ -39,6 +39,17 @@ router.get('/active-alerts', requireAdminOrRescue, async (req, res) => {
             .populate('lastNear')
             .lean();
 
+        console.log(`[RESCUE-QUERY] Found ${tourists.length} tourists. Query: role=tourist, (lastInside.length>0 OR currentLocation.timestamp >= ${fiveMinutesAgo.toISOString()})`);
+        
+        if (tourists.length === 0) {
+            // Debug: check raw tourist counts
+            const allTourists = await User.find({ role: 'tourist' }).lean();
+            console.log(`[RESCUE-DEBUG] Total tourists in DB: ${allTourists.length}`);
+            allTourists.forEach(t => {
+                console.log(`  - ${t.name}: lastInside=${t.lastInside?.length || 0}, location timestamp=${t.currentLocation?.timestamp || 'none'}`);
+            });
+        }
+
         console.log(`[RESCUE] Scanning ${tourists.length} candidate tourists for active alerts...`);
         const activeAlerts = [];
 

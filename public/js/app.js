@@ -1,7 +1,7 @@
 import { initGeofence, loadFences } from './geofence.js';
 import { initLocation } from './location.js';
-import { getUserId, getToken, setCurrentUser } from './auth.js';
-import { updateUIForUser } from './ui.js';
+import { getUserId, getToken, setCurrentUser, currentUser } from './auth.js';
+import { updateUIForUser, positionPanels } from './ui.js';
 import { API } from './config.js';
 import { startRescueUpdates } from './rescue.js';
 import { initAIInsights } from './ai-insights.js';
@@ -63,15 +63,20 @@ initLocation(map);
             document.getElementById('tourist-controls').style.display = 'block';
         }
         
-        // Show AI insights for everyone except admin (optional preference)
-        if (currentUser.role !== 'admin') {
+        // Show AI insights only for admin
+        if (currentUser.role === 'admin') {
             const aiPanel = document.getElementById('ai-insights-panel');
             if (aiPanel) {
                 aiPanel.style.display = 'block';
                 initAIInsights();
+                // Reposition panels after AI insights are loaded
+                setTimeout(positionPanels, 100);
             }
         }
     }
+
+    // Position panels vertically to avoid overlap
+    positionPanels();
 
     loadFences();
 
