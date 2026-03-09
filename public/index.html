@@ -1,136 +1,200 @@
 <!doctype html>
 <html>
-
-<head>
+  <head>
     <meta charset="utf-8" />
     <title>GeoNotify - Tourist Safety System</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
+    />
     <link rel="stylesheet" href="css/styles.css?v=2" />
-</head>
+  </head>
 
-<body>
-
+  <body>
     <header>
-        <h1>🌿 GeoNotify - Tourist Safety System</h1>
-        <p>Real-time geofencing with automatic rescue team alerts</p>
-        <div id="user-info"><em>Not logged in</em></div>
-        <div id="auth-buttons"></div>
+      <h1>🌿 GeoNotify - Tourist Safety System</h1>
+      <p>Real-time geofencing with automatic rescue team alerts</p>
+      <div id="user-info"><em>Not logged in</em></div>
+      <div id="auth-buttons"></div>
     </header>
 
     <div class="info-box danger-legend">
-        <div class="danger-item">
-            <div class="danger-box" style="background:#007bff;"></div>
-            <span>✅ Safe</span>
-        </div>
-        <div class="danger-item">
-            <div class="danger-box" style="background:#FFFF00;"></div>
-            <span>⚡ Caution</span>
-        </div>
-        <div class="danger-item">
-            <div class="danger-box" style="background:#FFA500;"></div>
-            <span>⚠️ Warning</span>
-        </div>
-        <div class="danger-item">
-            <div class="danger-box" style="background:#FF0000;"></div>
-            <span>⚠️ Danger</span>
-        </div>
-        <div class="danger-item">
-            <div class="danger-box" style="background:#8B0000;"></div>
-            <span>🚨 Critical</span>
-        </div>
+      <div class="danger-item">
+        <div class="danger-box" style="background: #007bff"></div>
+        <span>✅ Safe</span>
+      </div>
+      <div class="danger-item">
+        <div class="danger-box" style="background: #ffff00"></div>
+        <span>⚡ Caution</span>
+      </div>
+      <div class="danger-item">
+        <div class="danger-box" style="background: #ffa500"></div>
+        <span>⚠️ Warning</span>
+      </div>
+      <div class="danger-item">
+        <div class="danger-box" style="background: #ff0000"></div>
+        <span>⚠️ Danger</span>
+      </div>
+      <div class="danger-item">
+        <div class="danger-box" style="background: #8b0000"></div>
+        <span>🚨 Critical</span>
+      </div>
     </div>
 
     <div id="map"></div>
 
     <!-- Admin Controls Panel -->
-    <div class="panel" id="admin-controls" style="display:none;">
-        <h3>👑 Admin Controls</h3>
-        <input id="name" placeholder="Geofence name *" />
-        <textarea id="description" placeholder="Description (optional)"></textarea>
-        <textarea id="reminder" placeholder="Safety reminder (optional)"></textarea>
-        <button id="draw-start">✏️ Start Drawing</button>
-        <button id="save">💾 Save Geofence</button>
-        <small style="color:#666; display:block; margin-top:10px;">
-            Click map to add points. Need ≥3 points to save.
-        </small>
+    <div class="panel" id="admin-controls" style="display: none">
+      <h3>👑 Admin Controls</h3>
+      <input id="name" placeholder="Geofence name *" />
+      <textarea
+        id="description"
+        placeholder="Description (optional)"
+      ></textarea>
+      <textarea
+        id="reminder"
+        placeholder="Safety reminder (optional)"
+      ></textarea>
+      <button id="draw-start">✏️ Start Drawing</button>
+      <button id="save">💾 Save Geofence</button>
+      <small style="color: #666; display: block; margin-top: 10px">
+        Click map to add points. Need ≥3 points to save.
+      </small>
     </div>
 
     <!-- Tourist Controls Panel -->
-    <div class="panel" id="tourist-controls" style="display:none;">
-        <h3>🧳 Tourist Controls</h3>
-        <button id="watch">▶️ Start Watch</button>
-        <button id="my-location">📍 My Location</button>
-        <button id="simulate-movement" style="background:#9c27b0; color:white; margin-top:5px;">🏃 Simulate Movement</button>
-        <div id="status"></div>
+    <div class="panel" id="tourist-controls" style="display: none">
+      <h3>🧳 Tourist Controls</h3>
+      <button id="watch">▶️ Start Watch</button>
+      <button id="my-location">📍 My Location</button>
+      <button
+        id="simulate-movement"
+        style="background: #9c27b0; color: white; margin-top: 5px"
+      >
+        🏃 Simulate Movement
+      </button>
+      <div id="status"></div>
     </div>
 
     <!-- Rescue Team Panel -->
-    <div class="panel" id="rescue-controls" style="display:none;">
-        <h3>🚓 Rescue Team Dashboard</h3>
-        <div id="rescue-dashboard">
-            <p>Loading alerts...</p>
-        </div>
-        <button id="view-all-alerts" style="background:#ff9800; color:white; margin-top:10px;">📋 View All Alerts History</button>
+    <div class="panel" id="rescue-controls" style="display: none">
+      <h3>🚓 Rescue Team Dashboard</h3>
+      <div id="rescue-dashboard">
+        <p>Loading alerts...</p>
+      </div>
+      <button
+        id="view-all-alerts"
+        style="background: #ff9800; color: white; margin-top: 10px"
+      >
+        📋 View All Alerts History
+      </button>
     </div>
 
     <!-- AI Insights Panel (Universal) -->
-    <div class="panel ai-panel" id="ai-insights-panel" style="display:none; margin-top:20px;">
-        <h3><span class="pulse-ai">✨</span> AI Safety Insights</h3>
-        <p style="font-size:0.8rem; color:#666; margin:-10px 0 10px 0;">Predictive analysis based on logs + weather + time</p>
-        <div id="ai-insights-list">
-            <p>Analyzing risk patterns...</p>
-        </div>
+    <div
+      class="panel ai-panel"
+      id="ai-insights-panel"
+      style="display: none; margin-top: 20px"
+    >
+      <h3><span class="pulse-ai">✨</span> AI Safety Insights</h3>
+      <p style="font-size: 0.8rem; color: #666; margin: -10px 0 10px 0">
+        Predictive analysis based on logs + weather + time
+      </p>
+      <div id="ai-insights-list">
+        <p>Analyzing risk patterns...</p>
+      </div>
     </div>
 
     <!-- Alerts History Modal -->
-    <div id="alerts-history-modal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);">
-        <div class="modal-content" style="background-color:#fefefe; margin:10% auto; padding:20px; border:1px solid #888; width:80%; max-width:800px; border-radius:8px;">
-            <span class="close-alerts-modal" style="color:#aaa; float:right; font-size:28px; font-weight:bold; cursor:pointer;">&times;</span>
-            <h2>📋 All Alerts History</h2>
-            <div id="alerts-history-content" style="max-height:60vh; overflow-y:auto; margin-top:15px;">
-                <p>Loading...</p>
-            </div>
+    <div
+      id="alerts-history-modal"
+      class="modal"
+      style="
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+      "
+    >
+      <div
+        class="modal-content"
+        style="
+          background-color: #fefefe;
+          margin: 10% auto;
+          padding: 20px;
+          border: 1px solid #888;
+          width: 80%;
+          max-width: 800px;
+          border-radius: 8px;
+        "
+      >
+        <span
+          class="close-alerts-modal"
+          style="
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+          "
+          >&times;</span
+        >
+        <h2>📋 All Alerts History</h2>
+        <div
+          id="alerts-history-content"
+          style="max-height: 60vh; overflow-y: auto; margin-top: 15px"
+        >
+          <p>Loading...</p>
         </div>
+      </div>
     </div>
 
     <!-- Auth Modal -->
     <div id="auth-modal">
-        <div class="modal-content">
-            <h2 id="modal-title"></h2>
-            <div id="modal-content"></div>
-        </div>
+      <div class="modal-content">
+        <h2 id="modal-title"></h2>
+        <div id="modal-content"></div>
+      </div>
     </div>
 
     <div class="info-box">
-        <h3>ℹ️ How GeoNotify Works</h3>
-        <ul>
-            <li><strong>👑 Admin:</strong> Create and manage geofenced zones. Set danger levels and configure automatic
-                rescue
-                alerts.</li>
-            <li><strong>🧳 Tourist:</strong> Register, login, and subscribe to safety zones. Receive real-time alerts
-                when
-                entering danger areas.</li>
-            <li><strong>🚓 Rescue Team:</strong> Monitor active danger alerts. Receive automatic notifications when
-                tourists
-                enter critical zones.</li>
-            <li><strong>🚨 Auto-Rescue:</strong> Critical and danger zones automatically notify the rescue team with
-                tourist
-                location and emergency contacts.</li>
-            <li><strong>📍 Real-time Tracking:</strong> Continuous location monitoring with distance-based proximity
-                alerts.
-            </li>
-            <li style="color:#6366f1;"><strong>✨ AI Prediction Rules:</strong>
-                <br>• 📈 <strong>Frequency:</strong> Risk ↑ if logs > 5 in last 24h.
-                <br>• ⛈️ <strong>Weather:</strong> Risk ↑ during Storms/Rain.
-                <br>• 🌙 <strong>Temporal:</strong> Risk ↑ between 10 PM and 5 AM.
-            </li>
-        </ul>
+      <h3>ℹ️ How GeoNotify Works</h3>
+      <ul>
+        <li>
+          <strong>👑 Admin:</strong> Create and manage geofenced zones. Set
+          danger levels and configure automatic rescue alerts.
+        </li>
+        <li>
+          <strong>🧳 Tourist:</strong> Receive real-time information and alerts.
+        </li>
+        <li>
+          <strong>🚓 Rescue Team:</strong> Monitor active danger alerts. Receive
+          automatic notifications when tourists enter critical zones.
+        </li>
+        <li>
+          <strong>🚨 Auto-Rescue:</strong> Critical and danger zones
+          automatically notify the rescue team with tourist location and
+          emergency contacts.
+        </li>
+        <li>
+          <strong>📍 Real-time Tracking:</strong> Continuous location monitoring
+          with distance-based proximity alerts.
+        </li>
+      </ul>
     </div>
 
     <footer>
-        &copy; 2025 GeoNotify - Tourist Safety System | Powered by OpenStreetMap
+      &copy; 2025 GeoNotify - Tourist Safety System | Powered by OpenStreetMap
     </footer>
 
     <!-- Scripts -->
@@ -138,6 +202,5 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script type="module" src="js/app.js?v=3"></script>
-</body>
-
+  </body>
 </html>
