@@ -100,7 +100,7 @@ const userNotificationCooldown = new Map();
 
 async function notifyUser(user, title, body, data = {}) {
 
-    const cooldownTime = 2 * 60 * 1000; // 2 minutes
+    const cooldownTime = 45 * 1000; // 45 seconds
 
     const key = `${user._id}-${data.tag || "notification"}`;
     const now = Date.now();

@@ -26,7 +26,7 @@ async function generateSafetyAdvice(context) {
     } = context;
 
     const prompt = `
-You are an AI safety assistant for GeoNotify.
+You are expert in providing safety advice to tourists based on geospatial risk factors. Analyze the following context and determine if the tourist is approaching a risky area. If so, explain why and give a concise safety recommendation.
 
 ZONE INFORMATION
 - Area: ${geofenceName}
@@ -84,7 +84,13 @@ Respond ONLY in JSON:
 
         clearTimeout(timeout);
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const message = data?.error?.message || `HTTP ${response.status}`;
+            console.warn(`OpenRouter API request failed (${response.status}):`, message);
+            return null;
+        }
 
         if (!data.choices || !data.choices[0]) {
             console.warn("OpenRouter returned no choices:", data);

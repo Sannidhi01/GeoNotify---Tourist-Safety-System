@@ -4,7 +4,6 @@ import { getUserId, getToken, setCurrentUser, currentUser } from './auth.js';
 import { updateUIForUser, positionPanels } from './ui.js';
 import { API } from './config.js';
 import { startRescueUpdates } from './rescue.js';
-import { initAIInsights } from './ai-insights.js';
 
 const map = L.map('map').setView([12.9716, 77.5946], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -63,16 +62,7 @@ initLocation(map);
             document.getElementById('tourist-controls').style.display = 'block';
         }
         
-        // Show AI insights only for admin
-        if (currentUser.role === 'admin') {
-            const aiPanel = document.getElementById('ai-insights-panel');
-            if (aiPanel) {
-                aiPanel.style.display = 'block';
-                initAIInsights();
-                // Reposition panels after AI insights are loaded
-                setTimeout(positionPanels, 100);
-            }
-        }
+        // Admin requested: AI insights panel disabled
     }
 
     // Position panels vertically to avoid overlap

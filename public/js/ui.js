@@ -61,9 +61,8 @@ export function updateUIForUser() {
     document.getElementById('tourist-controls').style.display =
       currentUser.role === 'tourist' ? 'block' : 'none';
 
-    // Hide AI insights for non-admin users
-    document.getElementById('ai-insights-panel').style.display =
-      currentUser.role === 'admin' ? 'block' : 'none';
+    // Admin requested: remove AI safety insights panel
+    document.getElementById('ai-insights-panel').style.display = 'none';
   } else {
     userInfo.innerHTML = '<em>Not logged in</em>';
     authButtons.innerHTML = `

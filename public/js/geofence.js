@@ -12,6 +12,79 @@ let riskMap = {}; // AI risk data
 
 export const fenceLayers = {};
 
+function renderAiRiskTag(aiRisk) {
+    if (!aiRisk) {
+        return `
+            <div class="ai-risk-tag"
+                style="background:#f3f4f6;padding:8px;border-radius:6px;margin-top:8px;
+                font-size:0.85rem;border-left:4px solid #6366f1;">
+                <strong style="color:#4f46e5;">AI PREDICTION:</strong><br>
+                Area Risk Level:
+                <span style="font-weight:bold;">Analyzing...</span>
+            </div>
+        `;
+    }
+
+    const riskColor =
+        aiRisk.level === "HIGH" ? "#ef4444" :
+        aiRisk.level === "MEDIUM" ? "#f59e0b" :
+        "#10b981";
+
+    const reasonsText = Array.isArray(aiRisk.reasons) ? aiRisk.reasons.join(', ') : '';
+    const baseLevel = aiRisk.baseDangerLevel ? aiRisk.baseDangerLevel.toString().toUpperCase() : '';
+    const effectiveLevel = aiRisk.effectiveDangerLevel ? aiRisk.effectiveDangerLevel.toString().toUpperCase() : '';
+    const metaBits = [
+        baseLevel ? `Base: ${baseLevel}` : '',
+        effectiveLevel ? `Effective: ${effectiveLevel}` : '',
+        aiRisk.weather ? `Weather: ${aiRisk.weather}` : '',
+        (typeof aiRisk.hour === 'number') ? `Time: ${aiRisk.hour}:00` : ''
+    ].filter(Boolean).join(' • ');
+
+    return `
+        <div class="ai-risk-tag"
+            style="background:#f3f4f6;padding:10px;border-radius:8px;margin-top:10px;
+            font-size:0.85rem;border-left:5px solid ${riskColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+
+            <strong style="color:#4f46e5; display:block; margin-bottom:4px;">AI SAFETY ENGINE</strong>
+            ${metaBits ? `<div style="margin-bottom:8px; color:#64748b; font-size:0.78rem;">${metaBits}</div>` : ''}
+            
+            <div style="margin-bottom:8px; color:#475569;">
+                <strong>Reasoning:</strong> ${aiRisk.reasoning || 'Analyzing factors...'}
+            </div>
+
+            <div style="background:white; padding:8px; border-radius:6px; border:1px solid ${riskColor}33;">
+                <strong style="color:${riskColor};">Advice:</strong> ${aiRisk.recommendation || ''}
+            </div>
+
+            <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8; display:flex; justify-content:space-between;">
+                <span>Score: ${aiRisk.score}/100</span>
+                <span>Factors: ${reasonsText}</span>
+            </div>
+        </div>
+    `;
+}
+
+async function refreshAiRiskInsight(geofenceId) {
+    const container = document.getElementById(`ai-risk-${geofenceId}`);
+    if (!container) return;
+
+    const token = getToken();
+    if (!token) return;
+
+    try {
+        const r = await fetch(API + '/analytics/risk-insights/' + geofenceId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!r.ok) return;
+
+        const insight = await r.json();
+        riskMap[geofenceId] = insight;
+        container.innerHTML = renderAiRiskTag(insight);
+    } catch (e) {
+        // Keep existing UI if refresh fails
+    }
+}
+
 export function initGeofence(mapInstance) {
 
     drawnLayers = L.featureGroup().addTo(mapInstance);
@@ -129,6 +202,12 @@ export async function loadFences() {
         /* ------------------ FETCH AI RISK INSIGHTS ------------------ */
 
         try {
+
+            // Admin requested: do not load AI safety insights for admin views
+            if (currentUser && currentUser.role === 'admin') {
+                riskMap = {};
+                throw new Error('Skip AI insights for admin');
+            }
 
             const token = getToken();
 
@@ -250,6 +329,13 @@ export async function loadFences() {
                     `;
                 }
 
+                aiBlock = `<div id="ai-risk-${f._id}">${aiBlock}</div>`;
+
+                // Admin requested: remove AI safety insights from admin view
+                if (currentUser && currentUser.role === 'admin') {
+                    aiBlock = '';
+                }
+
                 /* ----------------------------------------------- */
 
                 let popupContent = `
@@ -282,6 +368,10 @@ export async function loadFences() {
                             e.stopPropagation();
                             deleteFence(f._id);
                         };
+                    }
+
+                    if (!(currentUser && currentUser.role === 'admin')) {
+                        refreshAiRiskInsight(f._id);
                     }
                 });
 

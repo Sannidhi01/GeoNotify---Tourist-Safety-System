@@ -48,12 +48,17 @@ router.get('/check', requireAuth, async (req, res) => {
 
         console.log(`[LOCATION CHECK] ${user.name} (${user.role}) at ${lat}, ${lng}`);
 
+        const prevInsideIds = (user.lastInside || []).map(x => x.toString());
+        const prevNearIds = (user.lastNear || []).map(x => x.toString());
+        const now = new Date();
+
         // check geofences
         const {
             inside,
             near,
             entered,
             exited,
+            enteredNear,
             fences
         } = await checkLocation(lat, lng, user);
 
@@ -63,18 +68,38 @@ router.get('/check', requireAuth, async (req, res) => {
         await handleExited(user, exited, location);
         await checkPeriodicAlerts(user, inside, location);
 
-        const prevIds = (user.lastInside || []).map(x => x.toString());
         const insideIds = inside.map(f => f._id.toString());
         const nearIds = near.map(f => f._id.toString());
 
         const allEntered = inside.filter(
-            f => !prevIds.includes(f._id.toString())
+            f => !prevInsideIds.includes(f._id.toString())
         );
 
-        const allExited = prevIds
+        const allExited = prevInsideIds
             .filter(id => !insideIds.includes(id))
             .map(id => fences.find(f => f._id.toString() === id))
             .filter(Boolean);
+
+        // Persist first "time of entry" into near/inside sessions per zone
+        if (!user.nearEntryTimes) user.nearEntryTimes = new Map();
+        if (!user.insideEntryTimes) user.insideEntryTimes = new Map();
+
+        const enteredNearIds = (enteredNear || []).map(f => f._id.toString());
+        enteredNearIds.forEach(id => {
+            if (!user.nearEntryTimes.get(id)) user.nearEntryTimes.set(id, now);
+        });
+
+        // Cleanup near sessions that ended
+        prevNearIds
+            .filter(id => !nearIds.includes(id))
+            .forEach(id => user.nearEntryTimes.delete(id));
+
+        // Record inside-entry time and cleanup on exit
+        const enteredInsideIds = entered.map(f => f._id.toString());
+        enteredInsideIds.forEach(id => {
+            if (!user.insideEntryTimes.get(id)) user.insideEntryTimes.set(id, now);
+        });
+        allExited.map(f => f._id.toString()).forEach(id => user.insideEntryTimes.delete(id));
 
         // update user state
         user.lastInside = insideIds;
@@ -84,19 +109,25 @@ router.get('/check', requireAuth, async (req, res) => {
         user.currentLocation = {
             lat,
             lng,
-            timestamp: new Date()
+            timestamp: now
         };
 
         await user.save();
 
         console.log(`[LOCATION SAVED] ${user.name} -> ${lat}, ${lng}`);
 
+        const withEnteredAt = (f) => {
+            const id = f && f._id ? f._id.toString() : '';
+            const ts = (id && user.insideEntryTimes && user.insideEntryTimes.get(id)) ? user.insideEntryTimes.get(id) : now;
+            return { ...f, enteredAt: ts instanceof Date ? ts.toISOString() : new Date(ts).toISOString() };
+        };
+
         res.json({
             inside,
             near,
-            entered,
+            entered: (entered || []).map(withEnteredAt),
             exited,
-            allEntered,
+            allEntered: (allEntered || []).map(withEnteredAt),
             allExited
         });
 

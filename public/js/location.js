@@ -204,7 +204,7 @@ async function onPos(pos, map) {
                 resetFence(f._id);
             });
         }
-        if (data.near) {
+        if (false && data.near) {
     data.near.forEach(f => {
 
         notifyUser(
@@ -220,13 +220,16 @@ async function onPos(pos, map) {
             data.entered.forEach(f => {
                 const dLevel = f.effectiveDangerLevel || f.dangerLevel;
                 const emoji = getDangerEmoji(dLevel);
-                notifyUser(`${emoji} Entered: ${f.name}`, f.reminder || 'Stay alert!');
+                const enteredDate = f.enteredAt ? new Date(f.enteredAt) : new Date();
+                const enteredTime = enteredDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const enteredBody = `${f.reminder || 'Stay alert!'} (Entered at: ${enteredTime})`;
+                notifyUser(`${emoji} Entered: ${f.name}`, enteredBody, `enter-${f._id}`);
             });
         }
 
         if (data.exited) {
             data.exited.forEach(f => {
-                notifyUser(`Exited: ${f.name}`, 'You left the area');
+                notifyUser(`Exited: ${f.name}`, 'You left the area', `exit-${f._id}`);
             });
         }
 
@@ -235,7 +238,8 @@ async function onPos(pos, map) {
                 const emoji = getDangerEmoji(f.effectiveDangerLevel || f.dangerLevel);
                 notifyUser(
                     `${emoji} Approaching Danger Zone`,
-                    `${Math.round(f.distanceMeters)}m away from ${f.name} - ${f.reminder || 'Be careful'}`
+                    `${Math.round(f.distanceMeters)}m away from ${f.name} - ${f.reminder || 'Be careful'}`,
+                    `near-${f._id}`
                 );
             });
         }
@@ -244,7 +248,16 @@ async function onPos(pos, map) {
     }
 }
 
-function notifyUser(title, body) {
+const localNotificationCooldown = new Map();
+const LOCAL_NOTIFICATION_COOLDOWN_MS = 45 * 1000; // 45 seconds
+
+function notifyUser(title, body, tag = 'notification') {
+    const now = Date.now();
+    const key = tag || `${title}|${body}`;
+    const lastSent = localNotificationCooldown.get(key);
+    if (lastSent && now - lastSent < LOCAL_NOTIFICATION_COOLDOWN_MS) return;
+    localNotificationCooldown.set(key, now);
+
     if (Notification && Notification.permission === 'granted') {
         new Notification(title, { body, requireInteraction: true });
     } else {

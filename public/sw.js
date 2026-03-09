@@ -9,7 +9,7 @@ self.addEventListener("push", event => {
     const title = data.title || "GeoNotify Alert";
 
     const options = {
-        body: data.body || "Danger zone nearby",
+        body: data.body || "Safety alert nearby",
         icon: "/icon.png",
         badge: "/icon.png",
         vibrate: [200,100,200],

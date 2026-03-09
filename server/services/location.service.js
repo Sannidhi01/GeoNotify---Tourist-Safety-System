@@ -191,7 +191,7 @@ async function handleNear(user, near, location) {
             hotspotsOccurred: false,
             touristDistance: Math.round(f.distanceMeters),
             threshold: f.nearMeters || 100,
-            touristEnteredTime: user.currentLocation?.timestamp,
+            touristEnteredTime: user.nearEntryTimes?.get?.(f._id?.toString?.() || String(f._id)) || user.currentLocation?.timestamp,
             timeRules: f.timeRules || []
         };
 
@@ -293,5 +293,6 @@ module.exports = {
     handleNear,
     handleExited,
     checkPeriodicAlerts,
-    calculateEffectiveLevel
+    calculateEffectiveLevel,
+    getEffectiveDangerLevel
 };

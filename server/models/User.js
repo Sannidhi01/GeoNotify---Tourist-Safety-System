@@ -33,6 +33,17 @@ const userSchema = new mongoose.Schema({
         lng: Number,
         timestamp: Date
     },
+    // Per-zone timestamps to preserve "time of entry" context for alerts/AI prompts
+    nearEntryTimes: {
+        type: Map,
+        of: Date,
+        default: {}
+    },
+    insideEntryTimes: {
+        type: Map,
+        of: Date,
+        default: {}
+    },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
 });

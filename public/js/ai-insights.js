@@ -5,6 +5,13 @@ let insightInterval = null;
 
 export async function initAIInsights() {
     if (!currentUser) return;
+
+    // Admin requested: do not show AI safety insights in admin UI
+    if (currentUser.role === 'admin') {
+        const list = document.getElementById('ai-insights-list');
+        if (list) list.innerHTML = '';
+        return;
+    }
     
     // Initial fetch
     await fetchRiskInsights();
