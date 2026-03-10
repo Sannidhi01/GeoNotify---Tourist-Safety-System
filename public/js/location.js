@@ -222,7 +222,7 @@ async function onPos(pos, map) {
                 const emoji = getDangerEmoji(dLevel);
                 const enteredDate = f.enteredAt ? new Date(f.enteredAt) : new Date();
                 const enteredTime = enteredDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const enteredBody = `${f.reminder || 'Stay alert!'} (Entered at: ${enteredTime})`;
+                const enteredBody = `${f.description || 'Stay alert!'} (Entered at: ${enteredTime})`;
                 notifyUser(`${emoji} Entered: ${f.name}`, enteredBody, `enter-${f._id}`);
             });
         }
@@ -238,7 +238,7 @@ async function onPos(pos, map) {
                 const emoji = getDangerEmoji(f.effectiveDangerLevel || f.dangerLevel);
                 notifyUser(
                     `${emoji} Approaching Danger Zone`,
-                    `${Math.round(f.distanceMeters)}m away from ${f.name} - ${f.reminder || 'Be careful'}`,
+                    `${Math.round(f.distanceMeters)}m away from ${f.name} - ${f.description || 'Be careful'}`,
                     `near-${f._id}`
                 );
             });

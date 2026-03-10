@@ -86,7 +86,7 @@ async function notifyRescueTeam(tourist, geofence, location) {
             message: `Rescue team notified (${notificationsSent} notifications sent)`
         });
 
-        console.log(`✓ Rescue team notified: ${rescueTeam.length} members, ${notificationsSent} notifications sent`);
+        console.log(`✓ Rescue team notified: ${rescueTeam.length} members, notifications sent`);
         return true;
     } catch (err) {
         console.error(' Failed to notify rescue team:', err);

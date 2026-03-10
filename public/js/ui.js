@@ -194,7 +194,7 @@ window.removeTimeRule = (index) => {
   renderTimeRules();
 };
 
-export function showDangerLevelModal(name, description, reminder, currentCoords) {
+export function showDangerLevelModal(name, description, currentCoords) {
   const modal = document.getElementById('auth-modal');
   const title = document.getElementById('modal-title');
   const content = document.getElementById('modal-content');
@@ -292,7 +292,7 @@ export function showDangerLevelModal(name, description, reminder, currentCoords)
     });
   });
 
-  document.getElementById('btn-save-fence').onclick = () => saveFence(name, description, reminder, currentCoords);
+  document.getElementById('btn-save-fence').onclick = () => saveFence(name, description, currentCoords);
   document.getElementById('btn-save-cancel').onclick = closeModal;
 
   // Time Rule Listener

@@ -22,7 +22,6 @@ router.post('/', requireAdmin, async (req, res) => {
         const {
             name,
             description,
-            reminder,
             coordinates,
             nearMeters,
             dangerLevel,
@@ -39,7 +38,6 @@ router.post('/', requireAdmin, async (req, res) => {
         const geofence = await Geofence.create({
             name,
             description: description || '',
-            reminder: reminder || '',
             coordinates,
             nearMeters: nearMeters || 100,
             dangerLevel: dangerLevel || 'safe',
@@ -61,7 +59,6 @@ router.put('/:id', requireAdmin, async (req, res) => {
         const {
             name,
             description,
-            reminder,
             coordinates,
             nearMeters,
             dangerLevel,
@@ -74,7 +71,6 @@ router.put('/:id', requireAdmin, async (req, res) => {
             {
                 name,
                 description,
-                reminder,
                 coordinates,
                 nearMeters,
                 dangerLevel,

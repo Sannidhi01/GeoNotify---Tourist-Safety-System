@@ -139,7 +139,7 @@ async function handleEntered(user, entered, location) {
         // Notify user
         await notifyUser(user,
             `Entered ${dLevel.toUpperCase()} Zone${weatherText}`,
-            `${f.name}: ${f.reminder || 'Stay alert!'}`,
+            `${f.name}: ${f.description || 'Stay alert!'}`,
             {
                 type: 'entered',
                 dangerLevel: dLevel,
@@ -206,7 +206,7 @@ async function handleNear(user, near, location) {
 
         const adviceText =
             aiAdvice?.recommendation ||
-            f.reminder ||
+            f.description ||
             "Be careful.";
 
         // SEND USER NOTIFICATION
@@ -252,7 +252,7 @@ async function handleExited(user, exited, location) {
     for (const f of exited) {
         await notifyUser(user,
             `✅ Exited ${f.name}`,
-            f.reminder || 'You have left the area',
+            f.description || 'You have left the area',
             { type: 'exited', tag: `exit-${f._id}` }
         );
 

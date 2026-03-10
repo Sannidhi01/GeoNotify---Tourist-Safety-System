@@ -123,18 +123,17 @@ export function initGeofence(mapInstance) {
 
         const name = document.getElementById('name').value.trim();
         const description = document.getElementById('description').value.trim();
-        const reminder = document.getElementById('reminder').value.trim();
 
         if (!name) return alert('Enter geofence name');
         if (currentCoords.length < 3) return alert('Need at least 3 points');
 
-        showDangerLevelModal(name, description, reminder, currentCoords);
+        showDangerLevelModal(name, description, currentCoords);
 
     });
 
 }
 
-export async function saveFence(name, description, reminder, coords) {
+export async function saveFence(name, description, coords) {
 
     const nearMeters = parseInt(document.getElementById('near-meters').value) || 100;
     const dangerLevel = document.querySelector('input[name="danger"]:checked').value;
@@ -154,7 +153,6 @@ export async function saveFence(name, description, reminder, coords) {
             body: JSON.stringify({
                 name,
                 description,
-                reminder,
                 coordinates: coords,
                 nearMeters,
                 dangerLevel,
@@ -177,7 +175,6 @@ export async function saveFence(name, description, reminder, coords) {
         document.getElementById('draw-start').textContent = '✏️ Start Drawing';
         document.getElementById('name').value = '';
         document.getElementById('description').value = '';
-        document.getElementById('reminder').value = '';
 
         closeModal();
 
@@ -348,7 +345,7 @@ export async function loadFences() {
                             ${f.dangerLevel.toUpperCase()}
                         </p>
                         <p style="margin:5px 0;">
-                            ${f.description || f.reminder || 'No description'}
+                            ${f.description || 'No description'}
                         </p>
                         <p style="margin:5px 0;">
                             <small>Near threshold: ${f.nearMeters || 100}m</small>
