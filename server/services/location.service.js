@@ -4,6 +4,15 @@ const NotificationLog = require('../models/NotificationLog');
 const { notifyRescueTeam, notifyUser } = require('./notification.service');
 const { getSimulatedWeather, adjustDangerLevelByWeather } = require('./weather.service');
 
+// Movement sanity limits to reduce false alerts from GPS glitches.
+const MAX_REALISTIC_SPEED_MS = 120; // ~432 km/h
+const MIN_JUMP_DISTANCE_METERS = 300;
+const SPEED_FOR_THRESHOLD_CAP_MS = 30;
+const parsedAiAdviceTriggerMeters = Number(process.env.AI_ADVICE_TRIGGER_METERS);
+const AI_ADVICE_TRIGGER_METERS = Number.isFinite(parsedAiAdviceTriggerMeters) && parsedAiAdviceTriggerMeters > 0
+    ? parsedAiAdviceTriggerMeters
+    : 50;
+
 // Helper to get effective danger level based on time rules
 function getEffectiveDangerLevel(f) {
     if (!f.timeRules || f.timeRules.length === 0) return f.dangerLevel;
@@ -43,6 +52,9 @@ async function checkLocation(lat, lng, user) {
 
     const inside = [];
     const near = [];
+    let ignoredUpdate = false;
+    let anomalyDetails = null;
+    let evalPoint = point;
 
     // Calculate user speed to dynamically adjust warning distance
     let speedMs = 0;
@@ -63,15 +75,32 @@ async function checkLocation(lat, lng, user) {
             );
             speedMs = dist / timeDiffSec;
             console.log(`User speed: ${speedMs.toFixed(2)} m/s`);
+
+            if (speedMs > MAX_REALISTIC_SPEED_MS && dist >= MIN_JUMP_DISTANCE_METERS) {
+                ignoredUpdate = true;
+                evalPoint = turf.point([lastLng, lastLat]);
+                anomalyDetails = {
+                    reason: 'implausible_jump',
+                    speedMs,
+                    distanceMeters: dist,
+                    timeDiffSec
+                };
+                console.warn(
+                    `[LOCATION] Ignoring implausible jump for ${user.name || user._id}: ` +
+                    `${(dist / 1000).toFixed(2)} km in ${timeDiffSec.toFixed(1)} s ` +
+                    `(${speedMs.toFixed(2)} m/s)`
+                );
+            }
         }
     }
 
     // Dynamic proximity threshold adjustment multiplier
     let speedMultiplier = 1;
-    if (speedMs > 3) { 
+    if (!ignoredUpdate && speedMs > 3) { 
         // If moving faster than ~10 km/h, increase nearMeters threshold. 
         // E.g., at 13 m/s (~45 km/h), multiplier becomes 3x. Max 5x.
-        speedMultiplier = 1 + (speedMs - 3) * 0.2;
+        const speedForThreshold = Math.min(speedMs, SPEED_FOR_THRESHOLD_CAP_MS);
+        speedMultiplier = 1 + (speedForThreshold - 3) * 0.2;
         if (speedMultiplier > 5) speedMultiplier = 5;
     }
 
@@ -90,7 +119,7 @@ async function checkLocation(lat, lng, user) {
         }
 
         const poly = turf.polygon([coords]);
-        const inPoly = turf.booleanPointInPolygon(point, poly);
+        const inPoly = turf.booleanPointInPolygon(evalPoint, poly);
 
         if (inPoly) {
             inside.push(f);
@@ -99,7 +128,7 @@ async function checkLocation(lat, lng, user) {
 
         // Check if near
         const line = turf.lineString(coords);
-        const distMeters = turf.pointToLineDistance(point, line, { units: 'meters' });
+        const distMeters = turf.pointToLineDistance(evalPoint, line, { units: 'meters' });
         // Apply dynamic speed multiplier
         const thresholdMeters = (f.nearMeters || 100) * speedMultiplier;
 
@@ -107,9 +136,6 @@ async function checkLocation(lat, lng, user) {
             near.push({ ...f, distanceMeters: distMeters });
         }
     }
-
-    // Update user's current location
-    user.currentLocation = { lat, lng, timestamp: new Date() };
 
     const insideIds = inside.map(f => f._id.toString());
     const nearIds = near.map(f => f._id.toString());
@@ -125,10 +151,30 @@ async function checkLocation(lat, lng, user) {
     // Track when user enters near threshold
     const enteredNear = near.filter(f => !prevNearIds.includes(f._id.toString()));
 
-    user.lastInside = insideIds;
-    user.lastNear = nearIds;
+    // Track when user crosses into "very close" danger range for AI advice.
+    const prevCloseDangerNearIds = (user.lastCloseDangerNear || []).map(x => x.toString());
+    const closeDangerNear = near.filter((f) => {
+        const dangerLevel = (f.effectiveDangerLevel || f.dangerLevel || '').toLowerCase();
+        return ['danger', 'critical'].includes(dangerLevel) &&
+            typeof f.distanceMeters === 'number' &&
+            f.distanceMeters < AI_ADVICE_TRIGGER_METERS;
+    });
+    const closeDangerNearIds = closeDangerNear.map(f => f._id.toString());
+    const enteredCloseDangerNear = closeDangerNear
+        .filter(f => !prevCloseDangerNearIds.includes(f._id.toString()));
 
-    return { inside, near, entered, exited, enteredNear, fences };
+    return {
+        inside,
+        near,
+        entered,
+        exited,
+        enteredNear,
+        enteredCloseDangerNear,
+        closeDangerNearIds,
+        fences,
+        ignoredUpdate,
+        anomalyDetails
+    };
 }
 
 // Handle entered geofence notifications
@@ -171,14 +217,18 @@ async function handleEntered(user, entered, location) {
 // Handle near geofence notifications
 async function handleNear(user, near, location) {
 
-    const { generateSafetyAdvice } = require('./openrouter.service');
+    const { generateSafetyAdvice } = require('./ollama.service');
 
     for (const f of near) {
 
         const dLevel = f.effectiveDangerLevel || f.dangerLevel;
+        const normalizedDangerLevel = (dLevel || '').toLowerCase();
         const weatherText = f.weather && f.weather !== 'Clear'
             ? ` (Weather: ${f.weather})`
             : '';
+        const shouldGenerateAiAdvice = ['danger', 'critical'].includes(normalizedDangerLevel) &&
+            typeof f.distanceMeters === 'number' &&
+            f.distanceMeters < AI_ADVICE_TRIGGER_METERS;
 
         // AI CONTEXT
         const aiContext = {
@@ -198,10 +248,12 @@ async function handleNear(user, near, location) {
         // CALL AI
         let aiAdvice = null;
 
-        try {
-            aiAdvice = await generateSafetyAdvice(aiContext);
-        } catch (err) {
-            console.log("AI failed, using fallback");
+        if (shouldGenerateAiAdvice) {
+            try {
+                aiAdvice = await generateSafetyAdvice(aiContext);
+            } catch (err) {
+                console.log("AI failed, using fallback");
+            }
         }
 
         const adviceText =
@@ -235,7 +287,7 @@ async function handleNear(user, near, location) {
         });
 
         // Notify rescue if danger
-        if (['danger', 'critical'].includes(dLevel)) {
+        if (['danger', 'critical'].includes(normalizedDangerLevel)) {
             await notifyRescueTeam(
                 user,
                 { ...f, isNear: true, distance: Math.round(f.distanceMeters) },

@@ -1,7 +1,7 @@
 const NotificationLog = require('../models/NotificationLog');
 const Geofence = require('../models/Geofence');
 const { getSimulatedWeather, adjustDangerLevelByWeather } = require('./weather.service');
-const { generateSafetyAdvice } = require('./openrouter.service');
+const { generateSafetyAdvice } = require('./ollama.service');
 
 // Import from location service (using require to avoid circularity if any, or just direct path)
 // Note: location service might require risk service later, but let's check.

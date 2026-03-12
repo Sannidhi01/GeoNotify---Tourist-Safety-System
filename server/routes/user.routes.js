@@ -59,12 +59,30 @@ router.get('/check', requireAuth, async (req, res) => {
             entered,
             exited,
             enteredNear,
-            fences
+            fences,
+            ignoredUpdate,
+            anomalyDetails
         } = await checkLocation(lat, lng, user);
+
+        if (ignoredUpdate) {
+            return res.status(202).json({
+                ignoredUpdate: true,
+                reason: anomalyDetails?.reason || 'implausible_jump',
+                speedMs: anomalyDetails?.speedMs,
+                distanceMeters: anomalyDetails?.distanceMeters,
+                timeDiffSec: anomalyDetails?.timeDiffSec,
+                inside,
+                near,
+                entered: [],
+                exited: [],
+                allEntered: [],
+                allExited: []
+            });
+        }
 
         // handle alerts
         await handleEntered(user, entered, location);
-        await handleNear(user, near, location);
+        await handleNear(user, enteredNear, location);
         await handleExited(user, exited, location);
         await checkPeriodicAlerts(user, inside, location);
 
