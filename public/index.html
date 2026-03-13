@@ -59,6 +59,16 @@
       <!-- Reminder field removed: admins set description and danger level only -->
       <button id="draw-start">✏️ Start Drawing</button>
       <button id="save">💾 Save Geofence</button>
+      <div style="margin-top: 12px;">
+        <strong>Manual Coordinates</strong>
+        <p style="font-size: 0.8rem; color: #666; margin: 6px 0;">
+          Enter one point per line as "lat, lng" (example: 12.9716, 77.5946).
+        </p>
+        <textarea id="manual-coords-sidebar" rows="5" style="width: 100%; resize: vertical;" placeholder="lat, lng&#10;lat, lng&#10;lat, lng"></textarea>
+        <button id="btn-apply-coords-sidebar" style="margin-top: 8px; background: #1976d2; color: white;">
+          Apply Points
+        </button>
+      </div>
       <small style="color: #666; display: block; margin-top: 10px">
         Click map to add points. Need ≥3 points to save.
       </small>

@@ -4,11 +4,12 @@
 
 async function generateSafetyAdvice(context) {
 
-    const apiKey = process.env.OLLAMA_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
-        console.warn("OLLAMA_API_KEY missing. Using fallback advice.");
-        return null;
+        console.warn("OPENROUTER_API_KEY missing. Falling back to Ollama.");
+        const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+        return generateOllamaAdvice(context);
     }
 
     const {
@@ -63,14 +64,16 @@ Respond ONLY in JSON:
 
     try {
 
-        const response = await fetch("https://api.ollama.ai/v1/chat/completions", {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "GeoNotify Safety AI"
             },
             body: JSON.stringify({
-                model: process.env.OLLAMA_MODEL || "mistral",
+                model: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct",
                 messages: [
                     {
                         role: "user",
@@ -87,29 +90,39 @@ Respond ONLY in JSON:
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            console.warn("Ollama API error:", data);
-            return null;
+            const message = data?.error?.message || `HTTP ${response.status}`;
+            console.warn("OpenRouter API error:", message);
+            const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+            return generateOllamaAdvice(context);
         }
 
         const content = data?.choices?.[0]?.message?.content?.trim();
 
         if (!content) {
-            console.warn("Ollama returned empty response");
-            return null;
+            console.warn("OpenRouter returned empty response");
+            const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+            return generateOllamaAdvice(context);
         }
 
-        console.log("AI Logic: Ollama response received");
+        console.log("AI Logic: OpenRouter response received");
 
         try {
 
             const json = content.replace(/```json|```/g, "").trim();
-            return JSON.parse(json);
+            const parsed = JSON.parse(json);
+            if (!parsed || !parsed.recommendation) {
+                const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+                return generateOllamaAdvice(context);
+            }
+            return parsed;
 
         } catch (parseError) {
 
             console.warn("AI JSON parse failed. Raw output:", content);
 
-            return {
+            const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+            const fallback = await generateOllamaAdvice(context);
+            return fallback || {
                 reasoning: "AI generated safety insight",
                 recommendation: content.substring(0, 120)
             };
@@ -119,12 +132,13 @@ Respond ONLY in JSON:
     } catch (err) {
 
         if (err.name === "AbortError") {
-            console.log("AI request timed out. Using fallback.");
+            console.log("OpenRouter request timed out. Falling back.");
         } else {
-            console.error("Ollama API error:", err.message);
+            console.error("OpenRouter API error:", err.message);
         }
 
-        return null;
+        const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+        return generateOllamaAdvice(context);
     }
 }
 

@@ -11,6 +11,7 @@ const geofenceRoutes = require('./routes/geofence.routes');
 const userRoutes = require('./routes/user.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const analyticsRoutes = require('./routes/analytics.routes'); // Added analyticsRoutes
+const { importZonesIfEnabled, startZoneImportWatcher } = require('./services/zoneImport.service');
 
 const app = express();
 
@@ -18,7 +19,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-connectDB();
+connectDB().then(() => {
+    importZonesIfEnabled();
+    startZoneImportWatcher();
+});
 
 app.use(attachUser);
 

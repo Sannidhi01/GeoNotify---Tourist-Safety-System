@@ -1,0 +1,77 @@
+{
+  "city": "Mysuru",
+  "zones": [
+    {
+      "name": "Kabini Dam Backwater Edge",
+      "lat": 12.1194,
+      "lon": 76.3258,
+      "radius_m": 850,
+      "type": "wildlife_waterbody",
+      "risk_level": "high"
+    },
+    {
+      "name": "Bandipur Highway Forest Crossing",
+      "lat": 11.7482,
+      "lon": 76.6278,
+      "radius_m": 950,
+      "type": "wildlife_corridor",
+      "risk_level": "high"
+    },
+    {
+      "name": "Himavad Gopalaswamy Hills Road Curve",
+      "lat": 12.1469,
+      "lon": 76.6932,
+      "radius_m": 1000,
+      "type": "hill_fog_wildlife",
+      "risk_level": "high"
+    },
+    {
+      "name": "Talakadu Sandbank River Area",
+      "lat": 12.1885,
+      "lon": 77.0307,
+      "radius_m": 900,
+      "type": "waterbody_drowning_risk",
+      "risk_level": "medium"
+    },
+    {
+      "name": "Ranganathittu Crocodile Nesting Area",
+      "lat": 12.4226,
+      "lon": 76.6574,
+      "radius_m": 800,
+      "type": "wildlife_waterbody",
+      "risk_level": "medium"
+    },
+    {
+      "name": "Lingambudhi Forest Trail",
+      "lat": 12.2698,
+      "lon": 76.6462,
+      "radius_m": 700,
+      "type": "remote_forest",
+      "risk_level": "medium"
+    },
+    {
+      "name": "Chamundi Hill Night Viewpoint",
+      "lat": 12.2712,
+      "lon": 76.6701,
+      "radius_m": 600,
+      "type": "night_risk",
+      "risk_level": "medium"
+    },
+    {
+      "name": "Karanji Lake Forest Edge",
+      "lat": 12.2964,
+      "lon": 76.6739,
+      "radius_m": 700,
+      "type": "waterbody_isolated",
+      "risk_level": "medium"
+    },
+    {
+      "name": "Varuna Lake Rural Stretch",
+      "lat": 12.2275,
+      "lon": 76.6943,
+      "radius_m": 900,
+      "type": "remote_waterbody",
+      "risk_level": "medium"
+    }
+  ]
+}

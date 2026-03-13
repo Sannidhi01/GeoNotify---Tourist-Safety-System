@@ -1,7 +1,7 @@
 const NotificationLog = require('../models/NotificationLog');
 const Geofence = require('../models/Geofence');
-const { getSimulatedWeather, adjustDangerLevelByWeather } = require('./weather.service');
-const { generateSafetyAdvice } = require('./ollama.service');
+const { getWeatherForGeofence, adjustDangerLevelByWeather } = require('./weather.service');
+const { generateSafetyAdvice } = require('./openrouter.service');
 
 // Import from location service (using require to avoid circularity if any, or just direct path)
 // Note: location service might require risk service later, but let's check.
@@ -78,7 +78,7 @@ async function calculateRiskScore(geofenceId) {
 
     // Calculate currently active danger level (Time + Weather aware) with a single weather sample
     const baseLevel = getEffectiveDangerLevel(f);
-    const weather = getSimulatedWeather(f);
+    const weather = await getWeatherForGeofence(f);
     const effectiveLevel = adjustDangerLevelByWeather(baseLevel, weather);
 
     // 1. SPATIAL CLUSTERING (HOTSPOTS)

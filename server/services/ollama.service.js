@@ -1,9 +1,10 @@
 // server/services/ollama.service.js
 // Integration with Ollama Cloud API (or local Ollama instance)
 
-const REQUEST_TIMEOUT_MS = Math.max(3000, Number(process.env.OLLAMA_TIMEOUT_MS || 12000));
+const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.OLLAMA_TIMEOUT_MS || 20000));
 const FAILURE_THRESHOLD = 3;
 const FAILURE_COOLDOWN_MS = 2 * 60 * 1000;
+const { generateSafetyAdvice: generateOpenRouterAdvice } = require('./openrouter.service');
 
 let consecutiveFailures = 0;
 let disabledUntilTs = 0;
@@ -49,6 +50,22 @@ function buildRequestCandidates(baseUrl, model, prompt) {
 
 function extractContent(data) {
     return data?.message?.content || data?.choices?.[0]?.message?.content || '';
+}
+
+function extractJsonObject(text) {
+    if (!text) return null;
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    try {
+        return JSON.parse(cleaned);
+    } catch (e) {
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (!match) return null;
+        try {
+            return JSON.parse(match[0]);
+        } catch (err) {
+            return null;
+        }
+    }
 }
 
 function registerSuccess() {
@@ -101,7 +118,9 @@ async function generateSafetyAdvice(context) {
     } = context;
 
     const prompt = `
-You are expert in providing safety advice to tourists based on geospatial risk factors. Analyze the following context and determine if the tourist is approaching a risky area. If so, explain why and give a concise safety recommendation.
+You are an expert safety assistant. Return plain text with exactly two lines:
+Risk: <short reason that connects zone, time, weather, incidents>
+Advice: <short actionable advice under 20 words>
 
 ZONE INFORMATION
 - Area: ${geofenceName}
@@ -123,14 +142,7 @@ ADMIN RULES
 - Time rules: ${timeRules || 'None'}
 
 TASK
-Explain the risk and provide safety advice BEFORE the tourist reaches the zone.
-
-Respond ONLY in JSON:
-
-{
-  "reasoning": "Short explanation why the area is risky.",
-  "recommendation": "Short safety instruction under 15 words."
-}
+Explain the risk and provide concise safety advice based on the current zone context.
 `;
 
     const headers = { 'Content-Type': 'application/json' };
@@ -168,12 +180,56 @@ Respond ONLY in JSON:
 
             registerSuccess();
             console.log('AI Logic: Response received from Ollama');
+            console.log('AI Logic: Raw response:', content);
 
             try {
-                const json = content.replace(/```json|```/g, '').trim();
-                return JSON.parse(json);
+                const parsed = extractJsonObject(content);
+                if (parsed) {
+                    const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '';
+                    const recommendation = typeof parsed.recommendation === 'string' ? parsed.recommendation.trim() : '';
+                    if (recommendation) {
+                        console.log('AI Logic: Parsed JSON response:', {
+                            reasoning: reasoning || 'AI generated safety insight.',
+                            recommendation
+                        });
+                        return {
+                            reasoning: reasoning || 'AI generated safety insight.',
+                            recommendation
+                        };
+                    }
+                }
+
+                const reasoningMatch = content.match(/Reasoning:\s*(.*)/i) || content.match(/Risk:\s*(.*)/i);
+                const adviceMatch = content.match(/Advice:\s*(.*)/i);
+                const reasoningText = reasoningMatch ? reasoningMatch[1].trim() : '';
+                const adviceText = adviceMatch ? adviceMatch[1].trim() : '';
+
+                if (adviceText) {
+                    console.log('AI Logic: Parsed text response:', {
+                        reasoning: reasoningText || 'AI generated safety insight.',
+                        recommendation: adviceText
+                    });
+                    return {
+                        reasoning: reasoningText || 'AI generated safety insight.',
+                        recommendation: adviceText
+                    };
+                }
+
+                console.warn('AI parse failed. Raw output:', content);
+                const openRouter = await generateOpenRouterAdvice(context);
+                if (openRouter && openRouter.recommendation) {
+                    return openRouter;
+                }
+                return {
+                    reasoning: 'AI generated safety insight.',
+                    recommendation: content.substring(0, 120)
+                };
             } catch (parseError) {
-                console.warn('AI JSON parse failed. Raw output:', content);
+                console.warn('AI parse failed. Raw output:', content);
+                const openRouter = await generateOpenRouterAdvice(context);
+                if (openRouter && openRouter.recommendation) {
+                    return openRouter;
+                }
                 return {
                     reasoning: 'AI generated safety insight.',
                     recommendation: content.substring(0, 120)

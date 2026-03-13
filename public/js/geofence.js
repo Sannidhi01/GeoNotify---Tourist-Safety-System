@@ -7,6 +7,7 @@ let drawMode = false;
 let drawMarkers = [];
 let currentCoords = [];
 let drawnLayers = null;
+let mapRef = null;
 let fences = [];
 let riskMap = {}; // AI risk data
 
@@ -31,14 +32,6 @@ function renderAiRiskTag(aiRisk) {
         "#10b981";
 
     const reasonsText = Array.isArray(aiRisk.reasons) ? aiRisk.reasons.join(', ') : '';
-    const baseLevel = aiRisk.baseDangerLevel ? aiRisk.baseDangerLevel.toString().toUpperCase() : '';
-    const effectiveLevel = aiRisk.effectiveDangerLevel ? aiRisk.effectiveDangerLevel.toString().toUpperCase() : '';
-    const metaBits = [
-        baseLevel ? `Base: ${baseLevel}` : '',
-        effectiveLevel ? `Effective: ${effectiveLevel}` : '',
-        aiRisk.weather ? `Weather: ${aiRisk.weather}` : '',
-        (typeof aiRisk.hour === 'number') ? `Time: ${aiRisk.hour}:00` : ''
-    ].filter(Boolean).join(' • ');
 
     return `
         <div class="ai-risk-tag"
@@ -46,8 +39,6 @@ function renderAiRiskTag(aiRisk) {
             font-size:0.85rem;border-left:5px solid ${riskColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
 
             <strong style="color:#4f46e5; display:block; margin-bottom:4px;">AI SAFETY ENGINE</strong>
-            ${metaBits ? `<div style="margin-bottom:8px; color:#64748b; font-size:0.78rem;">${metaBits}</div>` : ''}
-            
             <div style="margin-bottom:8px; color:#475569;">
                 <strong>Reasoning:</strong> ${aiRisk.reasoning || 'Analyzing factors...'}
             </div>
@@ -56,8 +47,7 @@ function renderAiRiskTag(aiRisk) {
                 <strong style="color:${riskColor};">Advice:</strong> ${aiRisk.recommendation || ''}
             </div>
 
-            <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8; display:flex; justify-content:space-between;">
-                <span>Score: ${aiRisk.score}/100</span>
+            <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8;">
                 <span>Factors: ${reasonsText}</span>
             </div>
         </div>
@@ -87,6 +77,7 @@ async function refreshAiRiskInsight(geofenceId) {
 
 export function initGeofence(mapInstance) {
 
+    mapRef = mapInstance;
     drawnLayers = L.featureGroup().addTo(mapInstance);
 
     mapInstance.on('click', e => {
@@ -131,6 +122,60 @@ export function initGeofence(mapInstance) {
 
     });
 
+}
+
+export function applyManualCoords(rawText) {
+    if (!mapRef) {
+        return { ok: false, error: 'Map not ready' };
+    }
+
+    const lines = (rawText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length < 3) {
+        return { ok: false, error: 'Need at least 3 points' };
+    }
+
+    const coords = [];
+
+    for (const line of lines) {
+        const parts = line.split(/[,\s]+/).filter(Boolean);
+        if (parts.length < 2) {
+            return { ok: false, error: `Invalid point: "${line}"` };
+        }
+        let a = Number(parts[0]);
+        let b = Number(parts[1]);
+
+        if (!Number.isFinite(a) || !Number.isFinite(b)) {
+            return { ok: false, error: `Invalid numbers: "${line}"` };
+        }
+
+        let lat = a;
+        let lng = b;
+        if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) {
+            lat = b;
+            lng = a;
+        }
+
+        if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+            return { ok: false, error: `Out of range lat/lng: "${line}"` };
+        }
+
+        coords.push([lng, lat]);
+    }
+
+    drawMarkers.forEach(m => {
+        try { mapRef.removeLayer(m); } catch (e) {}
+        try { m.remove(); } catch (e) {}
+    });
+    drawMarkers = [];
+    currentCoords.length = 0;
+
+    coords.forEach(c => {
+        const marker = L.circleMarker([c[1], c[0]], { radius: 6, color: '#d00' }).addTo(mapRef);
+        drawMarkers.push(marker);
+        currentCoords.push([c[0], c[1]]);
+    });
+
+    return { ok: true, count: coords.length };
 }
 
 export async function saveFence(name, description, coords) {
@@ -199,31 +244,24 @@ export async function loadFences() {
         /* ------------------ FETCH AI RISK INSIGHTS ------------------ */
 
         try {
-
-            // Admin requested: do not load AI safety insights for admin views
-            if (currentUser && currentUser.role === 'admin') {
+            // Skip bulk AI insights for admin and tourists to speed up map load.
+            if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'tourist')) {
                 riskMap = {};
-                throw new Error('Skip AI insights for admin');
+                throw new Error('Skip AI insights for this role');
             }
 
             const token = getToken();
-
             const r = await fetch(API + '/analytics/risk-insights', {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
 
             if (r.ok) {
-
                 const insights = await r.json();
-
                 riskMap = {};
-
                 insights.forEach(zone => {
                     riskMap[zone.geofenceId] = zone;
                 });
-
             }
-
         } catch (e) {
             console.warn("AI insights unavailable");
         }
@@ -318,8 +356,7 @@ export async function loadFences() {
                                 <strong style="color:${riskColor};">Advice:</strong> ${aiRisk.recommendation}
                             </div>
 
-                            <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8; display:flex; justify-content:space-between;">
-                                <span>Score: ${aiRisk.score}/100</span>
+                            <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8;">
                                 <span>Factors: ${aiRisk.reasons.join(', ')}</span>
                             </div>
                         </div>

@@ -20,6 +20,8 @@ const geofenceSchema = new mongoose.Schema({
             enum: ['safe', 'caution', 'warning', 'danger', 'critical']
         }
     }],
+    source: { type: String, default: 'manual' },
+    sourceKey: { type: String, default: '' },
     createdBy: {
 
         type: mongoose.Schema.Types.ObjectId,

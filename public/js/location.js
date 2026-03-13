@@ -116,32 +116,17 @@ function updateUserMarker(lat, lng, map) {
 }
 
 // Map Visual Enhancements
-function updatePath(lat, lng, map, inDanger) {
-    userPathCoords.push({ lat, lng, inDanger });
-    
-    // To allow multi-colored paths, we redraw the whole path as multiple segments
+function updatePath(lat, lng, map) {
+    userPathCoords.push({ lat, lng });
     if (userPathLine) {
         if (Array.isArray(userPathLine)) {
             userPathLine.forEach(segment => map.removeLayer(segment));
         } else {
-            map.removeLayer(userPathLine); // In case it's still the old polyline object
+            map.removeLayer(userPathLine);
         }
     }
-    userPathLine = [];
-    
-    if (userPathCoords.length > 0) {
-        for (let i = 0; i < userPathCoords.length - 1; i++) {
-            const p1 = userPathCoords[i];
-            const p2 = userPathCoords[i+1];
-            // Segment is dangerous if *either* point was in danger zone
-            const isSegmentDanger = p1.inDanger || p2.inDanger;
-            const segment = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], { 
-                color: isSegmentDanger ? '#e74c3c' : '#007bff', 
-                weight: 4 
-            }).addTo(map);
-            userPathLine.push(segment);
-        }
-    }
+    userPathLine = null;
+    // No route rendering; keep coords only for potential future use
 }
 
 function updateVignette(inDanger) {
@@ -188,7 +173,7 @@ async function onPos(pos, map) {
             inDanger = data.inside.some(f => ['danger', 'critical'].includes(f.effectiveDangerLevel || f.dangerLevel));
         }
 
-        updatePath(lat, lng, map, inDanger);
+        updatePath(lat, lng, map);
         updateVignette(inDanger);
 
         // Handle visual highlights (independent of subscription)

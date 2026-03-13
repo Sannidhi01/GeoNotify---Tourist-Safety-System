@@ -1,5 +1,5 @@
 import { currentUser, logout, register, login } from './auth.js';
-import { loadFences, saveFence } from './geofence.js';
+import { loadFences, saveFence, applyManualCoords } from './geofence.js';
 import { stopRescueUpdates } from './rescue.js';
 
 export function positionPanels() {
@@ -80,6 +80,20 @@ export function updateUIForUser() {
 
   // Position panels to avoid overlap
   setTimeout(positionPanels, 50);
+
+  const sidebarApplyBtn = document.getElementById('btn-apply-coords-sidebar');
+  if (sidebarApplyBtn) {
+    sidebarApplyBtn.onclick = () => {
+      const raw = document.getElementById('manual-coords-sidebar').value;
+      const result = applyManualCoords(raw);
+      if (!result.ok) {
+        alert(result.error || 'Invalid coordinates');
+      } else {
+        alert(`Applied ${result.count} points`);
+      }
+    };
+  }
+
 }
 
 export function showRegister() {
@@ -247,6 +261,18 @@ export function showDangerLevelModal(name, description, currentCoords) {
       </label>
 
       <div style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;">
+        <h4 style="margin-bottom:10px;">Manual Coordinates</h4>
+        <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">
+          Enter one point per line as "lat, lng" (example: 12.9716, 77.5946).
+        </p>
+        <textarea id="manual-coords" rows="5" style="width:100%; resize:vertical;" placeholder="lat, lng&#10;lat, lng&#10;lat, lng"></textarea>
+        <button type="button" id="btn-apply-coords"
+          style="margin-top:8px; padding:6px 12px; background:#1976d2; color:white; border:none; border-radius:4px; cursor:pointer;">
+          Apply Points
+        </button>
+      </div>
+
+      <div style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;">
         <h4 style="margin-bottom:10px;">🕒 Time-Based Rules</h4>
         <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">Set different danger levels for specific times of day.</p>
         
@@ -294,6 +320,16 @@ export function showDangerLevelModal(name, description, currentCoords) {
 
   document.getElementById('btn-save-fence').onclick = () => saveFence(name, description, currentCoords);
   document.getElementById('btn-save-cancel').onclick = closeModal;
+
+  document.getElementById('btn-apply-coords').onclick = () => {
+    const raw = document.getElementById('manual-coords').value;
+    const result = applyManualCoords(raw);
+    if (!result.ok) {
+      alert(result.error || 'Invalid coordinates');
+    } else {
+      alert(`Applied ${result.count} points`);
+    }
+  };
 
   // Time Rule Listener
   document.getElementById('btn-add-timerule').onclick = () => {

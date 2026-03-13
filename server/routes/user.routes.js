@@ -99,38 +99,58 @@ router.get('/check', requireAuth, async (req, res) => {
             .filter(Boolean);
 
         // Persist first "time of entry" into near/inside sessions per zone
-        if (!user.nearEntryTimes) user.nearEntryTimes = new Map();
-        if (!user.insideEntryTimes) user.insideEntryTimes = new Map();
+        const nearEntryTimes = user.nearEntryTimes instanceof Map
+            ? user.nearEntryTimes
+            : new Map(Object.entries(user.nearEntryTimes || {}));
+        const insideEntryTimes = user.insideEntryTimes instanceof Map
+            ? user.insideEntryTimes
+            : new Map(Object.entries(user.insideEntryTimes || {}));
 
         const enteredNearIds = (enteredNear || []).map(f => f._id.toString());
+        const enteredInsideIds = entered.map(f => f._id.toString());
+        const exitedInsideIds = allExited.map(f => f._id.toString());
+
+        const setOps = {
+            lastInside: insideIds,
+            lastNear: nearIds,
+            currentLocation: { lat, lng, timestamp: now }
+        };
+        const unsetOps = {};
+
         enteredNearIds.forEach(id => {
-            if (!user.nearEntryTimes.get(id)) user.nearEntryTimes.set(id, now);
+            if (!nearEntryTimes.get(id)) {
+                nearEntryTimes.set(id, now);
+                setOps[`nearEntryTimes.${id}`] = now;
+            }
         });
 
-        // Cleanup near sessions that ended
         prevNearIds
             .filter(id => !nearIds.includes(id))
-            .forEach(id => user.nearEntryTimes.delete(id));
+            .forEach(id => {
+                if (nearEntryTimes.get(id)) {
+                    nearEntryTimes.delete(id);
+                    unsetOps[`nearEntryTimes.${id}`] = 1;
+                }
+            });
 
-        // Record inside-entry time and cleanup on exit
-        const enteredInsideIds = entered.map(f => f._id.toString());
         enteredInsideIds.forEach(id => {
-            if (!user.insideEntryTimes.get(id)) user.insideEntryTimes.set(id, now);
+            if (!insideEntryTimes.get(id)) {
+                insideEntryTimes.set(id, now);
+                setOps[`insideEntryTimes.${id}`] = now;
+            }
         });
-        allExited.map(f => f._id.toString()).forEach(id => user.insideEntryTimes.delete(id));
 
-        // update user state
-        user.lastInside = insideIds;
-        user.lastNear = nearIds;
+        exitedInsideIds.forEach(id => {
+            if (insideEntryTimes.get(id)) {
+                insideEntryTimes.delete(id);
+                unsetOps[`insideEntryTimes.${id}`] = 1;
+            }
+        });
 
-        // update live location
-        user.currentLocation = {
-            lat,
-            lng,
-            timestamp: now
-        };
+        const update = { $set: setOps };
+        if (Object.keys(unsetOps).length) update.$unset = unsetOps;
 
-        await user.save();
+        await User.updateOne({ _id: user._id }, update);
 
         console.log(`[LOCATION SAVED] ${user.name} -> ${lat}, ${lng}`);
 

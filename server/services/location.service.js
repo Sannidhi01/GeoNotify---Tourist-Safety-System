@@ -2,7 +2,7 @@ const turf = require('@turf/turf');
 const Geofence = require('../models/Geofence');
 const NotificationLog = require('../models/NotificationLog');
 const { notifyRescueTeam, notifyUser } = require('./notification.service');
-const { getSimulatedWeather, adjustDangerLevelByWeather } = require('./weather.service');
+const { getWeatherForGeofence, adjustDangerLevelByWeather } = require('./weather.service');
 
 // Movement sanity limits to reduce false alerts from GPS glitches.
 const MAX_REALISTIC_SPEED_MS = 120; // ~432 km/h
@@ -38,9 +38,9 @@ function getEffectiveDangerLevel(f) {
     return f.dangerLevel;
 }
 
-function calculateEffectiveLevel(f) {
+async function calculateEffectiveLevel(f) {
     let baseLevel = getEffectiveDangerLevel(f);
-    let weather = getSimulatedWeather(f);
+    let weather = await getWeatherForGeofence(f);
     return adjustDangerLevelByWeather(baseLevel, weather);
 }
 
@@ -108,7 +108,7 @@ async function checkLocation(lat, lng, user) {
     for (const f of fences) {
         // Calculate effective danger level
         let baseLevel = getEffectiveDangerLevel(f);
-        f.weather = getSimulatedWeather(f);
+        f.weather = await getWeatherForGeofence(f);
         f.effectiveDangerLevel = adjustDangerLevelByWeather(baseLevel, f.weather);
 
         let coords = f.coordinates.slice();
@@ -217,7 +217,7 @@ async function handleEntered(user, entered, location) {
 // Handle near geofence notifications
 async function handleNear(user, near, location) {
 
-    const { generateSafetyAdvice } = require('./ollama.service');
+    const { generateSafetyAdvice } = require('./openrouter.service');
 
     for (const f of near) {
 
