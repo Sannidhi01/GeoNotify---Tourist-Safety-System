@@ -10,6 +10,8 @@ let drawnLayers = null;
 let mapRef = null;
 let fences = [];
 let riskMap = {}; // AI risk data
+let editMarkers = {}; // per-fence vertex markers when editing
+let editingFenceId = null;
 
 export const fenceLayers = {};
 
@@ -52,6 +54,11 @@ function renderAiRiskTag(aiRisk) {
             </div>
         </div>
     `;
+}
+
+function formatLatLng(ll) {
+    if (!ll) return '';
+    return `${Number(ll.lat).toFixed(6)}, ${Number(ll.lng).toFixed(6)}`;
 }
 
 async function refreshAiRiskInsight(geofenceId) {
@@ -320,6 +327,15 @@ export async function loadFences() {
                             🗑️ Delete
                         </button>` : '';
 
+                const editBtns = (currentUser && currentUser.role === 'admin') ?
+                    `
+                        <div style="margin-top:8px;">
+                            <button id="btn-edit-${f._id}" class="btn-edit" style="margin-right:6px;padding:6px 8px;">✏️ Edit</button>
+                            <button id="btn-save-${f._id}" class="btn-save" style="display:none;margin-right:6px;padding:6px 8px;background:#1976d2;color:white;">💾 Save</button>
+                            <button id="btn-cancel-${f._id}" class="btn-cancel" style="display:none;padding:6px 8px;">✖️ Cancel</button>
+                        </div>
+                    ` : '';
+
                 const autoNotify = f.autoNotifyRescue ?
                     '<br><strong style="color:#e74c3c;">🚓 Auto-notify rescue team</strong>' : '';
 
@@ -365,8 +381,9 @@ export async function loadFences() {
 
                 aiBlock = `<div id="ai-risk-${f._id}">${aiBlock}</div>`;
 
-                // Admin requested: remove AI safety insights from admin view
-                if (currentUser && currentUser.role === 'admin') {
+                // Admin requested: remove AI safety insights from admin view (case-insensitive)
+                const isAdmin = currentUser && String(currentUser.role || '').toLowerCase() === 'admin';
+                if (isAdmin) {
                     aiBlock = '';
                 }
 
@@ -390,6 +407,7 @@ export async function loadFences() {
                         ${autoNotify}
                         ${aiBlock}
                         ${deleteBtn}
+                        ${editBtns}
                     </div>
                 `;
 
@@ -401,6 +419,41 @@ export async function loadFences() {
                         btnDel.onclick = (e) => {
                             e.stopPropagation();
                             deleteFence(f._id);
+                        };
+                    }
+
+                    const btnEdit = document.getElementById(`btn-edit-${f._id}`);
+                    const btnSave = document.getElementById(`btn-save-${f._id}`);
+                    const btnCancel = document.getElementById(`btn-cancel-${f._id}`);
+
+                    if (btnEdit) {
+                        btnEdit.onclick = (e) => {
+                            e.stopPropagation();
+                            startEditingFence(f._id, poly);
+                            btnEdit.style.display = 'none';
+                            if (btnSave) btnSave.style.display = 'inline-block';
+                            if (btnCancel) btnCancel.style.display = 'inline-block';
+                        };
+                    }
+
+                    if (btnCancel) {
+                        btnCancel.onclick = (e) => {
+                            e.stopPropagation();
+                            stopEditingFence(f._id, poly, false);
+                            if (btnEdit) btnEdit.style.display = 'inline-block';
+                            btnCancel.style.display = 'none';
+                            if (btnSave) btnSave.style.display = 'none';
+                        };
+                    }
+
+                    if (btnSave) {
+                        btnSave.onclick = async (e) => {
+                            e.stopPropagation();
+                            await saveEditedFence(f._id);
+                            stopEditingFence(f._id, poly, false);
+                            if (btnEdit) btnEdit.style.display = 'inline-block';
+                            btnSave.style.display = 'none';
+                            if (btnCancel) btnCancel.style.display = 'none';
                         };
                     }
 
@@ -498,4 +551,203 @@ export function resetFence(id) {
         fillOpacity: 0.3,
         weight: 3
     });
+}
+
+/* -------- EDITING HELPERS -------- */
+
+function startEditingFence(id, poly) {
+    if (!mapRef) return;
+
+    // Stop any other edit session
+    if (editingFenceId && editingFenceId !== id) {
+        const prev = fenceLayers[editingFenceId];
+        if (prev) stopEditingFence(editingFenceId, prev, false);
+    }
+
+    editingFenceId = id;
+
+    const latlngs = (poly.getLatLngs && poly.getLatLngs()[0]) ? poly.getLatLngs()[0].slice() : [];
+    if (!Array.isArray(latlngs) || latlngs.length < 3) return;
+
+    editMarkers[id] = [];
+
+    latlngs.forEach((ll, idx) => {
+        const icon = L.divIcon({
+            className: 'vertex-divicon',
+            html: `<div style="width:12px;height:12px;border-radius:7px;background:#1976d2;border:2px solid white;box-shadow:0 1px 2px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [12, 12]
+        });
+
+        const m = L.marker([ll.lat, ll.lng], { draggable: true, icon }).addTo(drawnLayers);
+        m._vertexIndex = idx;
+
+        m.bindTooltip(formatLatLng(m.getLatLng()), { permanent: true, direction: 'right', className: 'vertex-tooltip' });
+
+        m.on('drag', () => {
+            try {
+                const arr = poly.getLatLngs()[0];
+                arr[m._vertexIndex] = m.getLatLng();
+                poly.setLatLngs([arr]);
+                m.setTooltipContent(formatLatLng(m.getLatLng()));
+            } catch (e) { console.warn('drag update failed', e); }
+        });
+
+        m.on('click', () => {
+            const cur = m.getLatLng();
+            const val = prompt('Edit vertex (lat, lng):', `${cur.lat.toFixed(6)}, ${cur.lng.toFixed(6)}`);
+            if (!val) return;
+            const parts = val.split(/[;,\s]+/).map(s => s.trim()).filter(Boolean);
+            if (parts.length < 2) return alert('Enter lat and lng');
+            const nlat = Number(parts[0]);
+            const nlng = Number(parts[1]);
+            if (!Number.isFinite(nlat) || !Number.isFinite(nlng)) return alert('Invalid numbers');
+            m.setLatLng([nlat, nlng]);
+            const arr = poly.getLatLngs()[0];
+            arr[m._vertexIndex] = m.getLatLng();
+            poly.setLatLngs([arr]);
+            m.setTooltipContent(formatLatLng(m.getLatLng()));
+        });
+
+        m.on('dblclick', () => {
+            // remove vertex if >3
+            const arr = poly.getLatLngs()[0];
+            if (arr.length <= 3) return alert('Polygon needs at least 3 points');
+            arr.splice(m._vertexIndex, 1);
+            // remove marker and rebuild indices
+            m.remove();
+            editMarkers[id] = editMarkers[id].filter(x => x !== m);
+            // update remaining markers' indices
+            editMarkers[id].forEach((mk, i) => mk._vertexIndex = i);
+            poly.setLatLngs([arr]);
+        });
+
+        editMarkers[id].push(m);
+    });
+
+    // allow adding a new vertex by clicking polygon while editing
+    const addHandler = (e) => {
+        const pt = e.latlng;
+        const arr = poly.getLatLngs()[0];
+        // find insertion index: nearest edge
+        let best = { idx: 0, dist: Infinity };
+        for (let i = 0; i < arr.length; i++) {
+            const a = arr[i];
+            const b = arr[(i + 1) % arr.length];
+            const d = L.LineUtil.pointToSegmentDistance(mapRef.latLngToContainerPoint(pt), mapRef.latLngToContainerPoint(a), mapRef.latLngToContainerPoint(b));
+            if (d < best.dist) { best = { idx: i + 1, dist: d }; }
+        }
+        arr.splice(best.idx, 0, pt);
+        poly.setLatLngs([arr]);
+
+        // rebuild markers
+        editMarkers[id].forEach(mk => mk.remove());
+        editMarkers[id] = [];
+            poly.getLatLngs()[0].forEach((ll, idx) => {
+            const mkIcon = L.divIcon({
+                className: 'vertex-divicon',
+                html: `<div style="width:12px;height:12px;border-radius:7px;background:#1976d2;border:2px solid white;box-shadow:0 1px 2px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [12, 12]
+            });
+
+            const mk = L.marker([ll.lat, ll.lng], { draggable: true, icon: mkIcon }).addTo(drawnLayers);
+            mk._vertexIndex = idx;
+            mk.bindTooltip(formatLatLng(mk.getLatLng()), { permanent: true, direction: 'right', className: 'vertex-tooltip' });
+            mk.on('drag', () => {
+                const a = poly.getLatLngs()[0];
+                a[mk._vertexIndex] = mk.getLatLng();
+                poly.setLatLngs([a]);
+                mk.setTooltipContent(formatLatLng(mk.getLatLng()));
+            });
+            mk.on('click', () => {
+                const cur = mk.getLatLng();
+                const val = prompt('Edit vertex (lat, lng):', `${cur.lat.toFixed(6)}, ${cur.lng.toFixed(6)}`);
+                if (!val) return;
+                const parts = val.split(/[;,\s]+/).map(s => s.trim()).filter(Boolean);
+                if (parts.length < 2) return alert('Enter lat and lng');
+                const nlat = Number(parts[0]);
+                const nlng = Number(parts[1]);
+                if (!Number.isFinite(nlat) || !Number.isFinite(nlng)) return alert('Invalid numbers');
+                mk.setLatLng([nlat, nlng]);
+                const a = poly.getLatLngs()[0];
+                a[mk._vertexIndex] = mk.getLatLng();
+                poly.setLatLngs([a]);
+                mk.setTooltipContent(formatLatLng(mk.getLatLng()));
+            });
+            mk.on('dblclick', () => {
+                const a = poly.getLatLngs()[0];
+                if (a.length <= 3) return alert('Polygon needs at least 3 points');
+                a.splice(mk._vertexIndex, 1);
+                mk.remove();
+                editMarkers[id] = editMarkers[id].filter(x => x !== mk);
+                editMarkers[id].forEach((pmk, i) => pmk._vertexIndex = i);
+                poly.setLatLngs([a]);
+            });
+            editMarkers[id].push(mk);
+        });
+    };
+
+    poly._addVertexHandler = addHandler;
+    poly.on('click', addHandler);
+}
+
+function stopEditingFence(id, poly, removeMarkers = true) {
+    if (!poly) return;
+    try { poly.off('click', poly._addVertexHandler); } catch (e) {}
+    poly._addVertexHandler = null;
+
+    if (editMarkers[id]) {
+        if (removeMarkers) {
+            editMarkers[id].forEach(m => { try { m.remove(); } catch (e) {} });
+            editMarkers[id] = null;
+            delete editMarkers[id];
+        }
+    }
+
+    if (editingFenceId === id) editingFenceId = null;
+}
+
+async function saveEditedFence(id) {
+    if (!currentUser || currentUser.role !== 'admin') return alert('Only admins can edit geofences');
+    const poly = fenceLayers[id];
+    if (!poly) return alert('Polygon not found');
+
+    const latlngs = (poly.getLatLngs && poly.getLatLngs()[0]) ? poly.getLatLngs()[0] : [];
+    if (!Array.isArray(latlngs) || latlngs.length < 3) return alert('Need at least 3 points');
+
+    const coords = latlngs.map(ll => [ll.lng, ll.lat]);
+
+    // find original fence data to keep other fields
+    const original = fences.find(x => x._id === id) || {};
+
+    const payload = {
+        name: original.name || 'Unnamed',
+        description: original.description || '',
+        coordinates: coords,
+        nearMeters: original.nearMeters || 100,
+        dangerLevel: original.dangerLevel || 'safe',
+        autoNotifyRescue: original.autoNotifyRescue || false,
+        timeRules: original.timeRules || []
+    };
+
+    try {
+        const token = getToken();
+        const resp = await fetch(API + '/geofences/' + id, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+            const txt = await resp.text();
+            throw new Error(txt || 'Save failed');
+        }
+
+        alert('✓ Geofence updated');
+        loadFences();
+    } catch (err) {
+        alert('Error saving geofence: ' + err.message);
+    }
 }

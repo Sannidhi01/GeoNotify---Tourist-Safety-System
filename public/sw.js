@@ -25,6 +25,6 @@ self.addEventListener("notificationclick", event => {
     event.notification.close();
 
     event.waitUntil(
-        clients.openWindow("http://localhost:3000")
+        clients.openWindow("/")
     );
 });

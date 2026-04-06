@@ -4,17 +4,27 @@ const WEATHER_CACHE = new Map();
 const WEATHER_TTL_MS = Math.max(5 * 60 * 1000, Number(process.env.WEATHER_CACHE_MS || 10 * 60 * 1000));
 
 function getSimulatedWeather(geofence) {
-    // Generate a deterministic weather state based on geofence ID and current hour
+    // Generate a deterministic weather object based on geofence ID and current hour
     const hour = new Date().getHours();
     const hash = crypto.createHash('md5').update(geofence._id.toString() + hour).digest('hex');
     const val = parseInt(hash.substring(0, 2), 16); // 0-255
 
-    // 0-150: Clear
-    // 151-200: Rain
-    // 201-255: Storm
-    if (val <= 150) return 'Clear';
-    if (val <= 200) return 'Rain';
-    return 'Storm';
+    // Map value to coarse state
+    let state = 'Clear';
+    if (val <= 150) state = 'Clear';
+    else if (val <= 200) state = 'Rain';
+    else state = 'Storm';
+
+    return {
+        state,
+        main: state,
+        description: state,
+        temp: null,
+        feels_like: null,
+        wind_speed: null,
+        visibility: null,
+        // precipitation_mm removed
+    };
 }
 
 function getGeofenceCenter(geofence) {
@@ -37,17 +47,6 @@ function getGeofenceCenter(geofence) {
     return { lat: sumLat / count, lng: sumLng / count };
 }
 
-function mapOpenWeatherToState(data) {
-    const main = data?.weather?.[0]?.main || '';
-    const id = Number(data?.weather?.[0]?.id);
-
-    if (main === 'Thunderstorm' || (id >= 200 && id < 300)) return 'Storm';
-    if (main === 'Rain' || main === 'Drizzle' || (id >= 300 && id < 600)) return 'Rain';
-    if (main === 'Snow' || (id >= 600 && id < 700)) return 'Storm';
-    if (main === 'Clouds') return 'Clear';
-    return 'Clear';
-}
-
 async function getRealWeather(geofence) {
     const apiKey = process.env.OPENWEATHER_API_KEY;
     if (!apiKey) return null;
@@ -55,10 +54,11 @@ async function getRealWeather(geofence) {
     const center = getGeofenceCenter(geofence);
     if (!center) return null;
 
-    const cacheKey = `${center.lat.toFixed(3)},${center.lng.toFixed(3)}`;
+    // Use 4 decimal precision (~11m) to reduce accidental cache collisions for nearby zones
+    const cacheKey = `${center.lat.toFixed(4)},${center.lng.toFixed(4)}`;
     const cached = WEATHER_CACHE.get(cacheKey);
     if (cached && Date.now() - cached.ts < WEATHER_TTL_MS) {
-        return cached.state;
+        return cached.data;
     }
 
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${center.lat}&lon=${center.lng}&appid=${apiKey}&units=metric`;
@@ -67,9 +67,37 @@ async function getRealWeather(geofence) {
         const resp = await fetch(url);
         if (!resp.ok) return null;
         const data = await resp.json();
-        const state = mapOpenWeatherToState(data);
-        WEATHER_CACHE.set(cacheKey, { state, ts: Date.now() });
-        return state;
+
+        const main = data?.weather?.[0]?.main || '';
+        const id = Number(data?.weather?.[0]?.id || 0);
+        const description = data?.weather?.[0]?.description || '';
+        const temp = data?.main?.temp ?? null;
+        const feels_like = data?.main?.feels_like ?? null;
+        const wind_speed = data?.wind?.speed ?? null;
+        const visibility = data?.visibility ?? null; // meters
+        // precipitation_mm removed from output; we may still read rain/snow if needed elsewhere
+
+        // Determine coarse state
+        let state = 'Clear';
+        if (main === 'Thunderstorm' || (id >= 200 && id < 300)) state = 'Storm';
+        else if (main === 'Rain' || main === 'Drizzle' || (id >= 300 && id < 600)) state = 'Rain';
+        else if (main === 'Snow' || (id >= 600 && id < 700)) state = 'Storm';
+        else if (main === 'Clouds') state = 'Clear';
+
+        const result = {
+            state,
+            main,
+            id,
+            description,
+            temp,
+            feels_like,
+            wind_speed,
+            visibility,
+            // precipitation_mm removed
+        };
+
+        WEATHER_CACHE.set(cacheKey, { data: result, ts: Date.now() });
+        return result;
     } catch (err) {
         return null;
     }
@@ -86,12 +114,25 @@ function adjustDangerLevelByWeather(baseLevel, weather) {
     let idx = levels.indexOf(baseLevel);
     if (idx === -1) idx = 0;
 
-    if (weather === 'Rain') {
-        idx = Math.min(levels.length - 1, idx + 1); // bump by 1 level
-    } else if (weather === 'Storm') {
-        idx = Math.min(levels.length - 1, idx + 2); // bump by 2 levels
+    const state = typeof weather === 'string' ? weather : (weather && weather.state) || 'Clear';
+
+    // Base bumps for coarse states
+    if (state === 'Rain') idx = Math.min(levels.length - 1, idx + 1);
+    else if (state === 'Storm') idx = Math.min(levels.length - 1, idx + 2);
+
+    // Additional adjustments from detailed parameters (if provided)
+    const wind = Number(weather?.wind_speed ?? 0);
+    const vis = Number(weather?.visibility ?? Infinity);
+
+    if (!Number.isNaN(wind)) {
+        if (wind >= 25) idx = Math.min(levels.length - 1, idx + 2);
+        else if (wind >= 15) idx = Math.min(levels.length - 1, idx + 1);
     }
-    
+
+    if (!Number.isNaN(vis) && vis < 1000) {
+        idx = Math.min(levels.length - 1, idx + 1);
+    }
+
     return levels[idx];
 }
 

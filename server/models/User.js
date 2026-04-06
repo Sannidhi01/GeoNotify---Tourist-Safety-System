@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema({
         ref: 'Geofence'
     }],
     pushSubscriptions: { type: Array, default: [] },
+    fcmTokens: { type: Array, default: [] },
     emergencyContact: {
         name: String,
         phone: String,

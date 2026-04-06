@@ -203,11 +203,45 @@ router.post('/:id/push-subscribe', requireAuth, async (req, res) => {
     }
 });
 
+// Save an Android/Firebase device token for push notifications
+router.post('/:id/fcm-token', requireAuth, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const { token } = req.body;
+        if (!token || typeof token !== 'string') {
+            return res.status(400).json({ error: 'FCM token required' });
+        }
+
+        user.fcmTokens = Array.isArray(user.fcmTokens) ? user.fcmTokens : [];
+        if (!user.fcmTokens.includes(token)) {
+            user.fcmTokens.push(token);
+            await user.save();
+        }
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('FCM token save error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 router.get('/:id', requireAuth, async (req, res) => {
     try {
+        if (req.params.id !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
         const user = await User.findById(req.params.id)
-            .select('-passwordHash')
+            .select('-passwordHash -pushSubscriptions -fcmTokens')
             .lean();
 
         if (!user) {
@@ -225,7 +259,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.get('/admin/users', requireAdmin, async (req, res) => {
     try {
         const users = await User.find({ role: 'tourist' })
-            .select('-passwordHash -pushSubscriptions')
+            .select('-passwordHash -pushSubscriptions -fcmTokens')
             .sort({ createdAt: -1 })
             .lean();
 

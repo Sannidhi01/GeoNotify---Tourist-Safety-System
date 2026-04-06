@@ -106,11 +106,11 @@ export function showRegister() {
       <input type="text" id="reg-name" placeholder="Full Name" required>
       <input type="email" id="reg-email" placeholder="Email" required>
       <input type="password" id="reg-password" placeholder="Password" required>
-      <input type="tel" id="reg-phone" placeholder="Phone Number (optional)">
+      <input type="tel" id="reg-phone" placeholder="Phone Number (optional, E.164 e.g. +919876543210)">
       
       <h4>Emergency Contact (Optional)</h4>
       <input type="text" id="reg-em-name" placeholder="Emergency Contact Name">
-      <input type="tel" id="reg-em-phone" placeholder="Emergency Contact Phone">
+      <input type="tel" id="reg-em-phone" placeholder="Emergency Contact Phone (E.164)">
       <input type="text" id="reg-em-relation" placeholder="Relationship">
       
       <div style="margin:15px 0; padding:10px; background:#f0f0f0; border-radius:5px;">

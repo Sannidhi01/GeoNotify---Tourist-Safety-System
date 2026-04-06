@@ -3,6 +3,7 @@ const User = require('../models/User');
 const NotificationLog = require('../models/NotificationLog');
 const { requireAdminOrRescue } = require('../middleware/auth.middleware');
 const { calculateEffectiveLevel } = require('../services/location.service');
+const { sendSms } = require('../services/notification.service');
 
 const router = express.Router();
 
@@ -111,6 +112,32 @@ router.get('/active-alerts', requireAdminOrRescue, async (req, res) => {
         res.json({ activeAlerts, recentLogs });
     } catch (err) {
         console.error('Active alerts fetch error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Test SMS delivery for the logged-in user
+router.post('/test-sms', async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const phone = req.user.phone;
+        if (!phone) {
+            return res.status(400).json({ error: 'No phone number found on this account' });
+        }
+
+        const body = req.body?.message || 'GeoNotify test SMS: your Twilio setup is working.';
+        const ok = await sendSms(phone, body);
+
+        if (!ok) {
+            return res.status(500).json({ error: 'SMS send failed. Check Twilio env vars and phone format.' });
+        }
+
+        res.json({ ok: true, sentTo: phone });
+    } catch (err) {
+        console.error('Test SMS error:', err);
         res.status(500).json({ error: err.message });
     }
 });

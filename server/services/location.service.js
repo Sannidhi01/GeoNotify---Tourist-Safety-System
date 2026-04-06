@@ -108,8 +108,12 @@ async function checkLocation(lat, lng, user) {
     for (const f of fences) {
         // Calculate effective danger level
         let baseLevel = getEffectiveDangerLevel(f);
-        f.weather = await getWeatherForGeofence(f);
-        f.effectiveDangerLevel = adjustDangerLevelByWeather(baseLevel, f.weather);
+        const weatherObj = await getWeatherForGeofence(f);
+        // preserve backwards-compatible `f.weather` as a short state string
+        f.weather = (weatherObj && weatherObj.state) || weatherObj || 'Clear';
+        // attach full details for downstream consumers
+        f.weatherDetails = weatherObj || null;
+        f.effectiveDangerLevel = adjustDangerLevelByWeather(baseLevel, weatherObj || f.weather);
 
         let coords = f.coordinates.slice();
         const first = coords[0], last = coords[coords.length - 1];
@@ -191,6 +195,8 @@ async function handleEntered(user, entered, location) {
                 dangerLevel: dLevel,
                 weather: f.weather || 'Clear',
                 geofenceId: f._id,
+                geofenceName: f.name,
+                geofenceDescription: f.description || '',
                 tag: `enter-${f._id}`,
                 requireInteraction: ['danger', 'critical'].includes(dLevel)
             }
@@ -235,7 +241,7 @@ async function handleNear(user, near, location) {
             geofenceName: f.name,
             baseDangerLevel: f.dangerLevel,
             effectiveDangerLevel: dLevel,
-            weather: f.weather || "Clear",
+            weather: f.weatherDetails || { state: f.weather || 'Clear' },
             hour: new Date().getHours(),
             incidentCount: 0,
             hotspotsOccurred: false,
@@ -271,6 +277,9 @@ async function handleNear(user, near, location) {
                 dangerLevel: dLevel,
                 distance: f.distanceMeters,
                 weather: f.weather || 'Clear',
+                geofenceId: f._id,
+                geofenceName: f.name,
+                geofenceDescription: f.description || '',
                 tag: `near-${f._id}`
             }
         );
@@ -305,7 +314,13 @@ async function handleExited(user, exited, location) {
         await notifyUser(user,
             `✅ Exited ${f.name}`,
             f.description || 'You have left the area',
-            { type: 'exited', tag: `exit-${f._id}` }
+            {
+                type: 'exited',
+                geofenceId: f._id,
+                geofenceName: f.name,
+                geofenceDescription: f.description || '',
+                tag: `exit-${f._id}`
+            }
         );
 
         await NotificationLog.create({

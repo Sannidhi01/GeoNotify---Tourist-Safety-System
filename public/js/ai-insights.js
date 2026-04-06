@@ -64,11 +64,21 @@ function renderAIInsights(insights) {
                 </div>
                 <div class="ai-meta" style="margin-top:10px;">
                     <span>Logs (24h): ${ris.incidentCountLast24h}</span>
-                    <span>Weather: ${ris.weather}</span>
+                    <span>Weather: ${formatWeather(ris.weather)}</span>
                 </div>
             </div>
         </div>
     `).join('');
+}
+
+function formatWeather(w) {
+    if (!w) return 'Unknown';
+    if (typeof w === 'string') return w;
+    const parts = [];
+    if (w.state) parts.push(w.state);
+    if (w.temp != null) parts.push(`${w.temp}°C`);
+    if (w.wind_speed != null) parts.push(`wind ${w.wind_speed} m/s`);
+    return parts.join(', ') || JSON.stringify(w);
 }
 
 // Function to update individual geofence risk (called from geofence.js)
