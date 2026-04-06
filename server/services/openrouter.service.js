@@ -3,8 +3,7 @@
 const { OpenRouter } = require('@openrouter/sdk');
 
 async function generateSafetyAdvice(context) {
-    // const apiKey = process.env.OPENROUTER_API_KEY;
-    const apiKey = "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";
+    const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
         console.warn('OPENROUTER_API_KEY missing. Falling back to Ollama.');
