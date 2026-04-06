@@ -19,7 +19,10 @@ function buildFallbackSafetyAdvice({ geofenceName, baseDangerLevel, effectiveDan
     if (geofenceName) reasoningParts.push(`${geofenceName}`);
     if (base) reasoningParts.push(`base level ${base.toUpperCase()}`);
     if (effective && effective !== base) reasoningParts.push(`effective level ${effective.toUpperCase()}`);
-    if (weather && weather !== 'Clear') reasoningParts.push(`weather ${weather}`);
+    const weatherLabel = (weather && (weather.state || weather.main)) ?
+        `${weather.state || weather.main}${weather.temp != null ? `, ${weather.temp}°C` : ''}` :
+        (weather || 'Clear');
+    if (weatherLabel && weatherLabel !== 'Clear') reasoningParts.push(`weather ${weatherLabel}`);
     if (isNight) reasoningParts.push('night hours');
     if (hotspotsOccurred) reasoningParts.push('hotspots detected');
     if (hasIncidents) reasoningParts.push(`${incidentCount} recent incidents`);
@@ -49,8 +52,9 @@ function buildFallbackSafetyAdvice({ geofenceName, baseDangerLevel, effectiveDan
     }
 
     if (isNight) advice.push('Avoid isolated routes; prefer well-lit main roads.');
-    if (weather === 'Storm') advice.push('Seek shelter; avoid low-lying or flooded areas.');
-    if (weather === 'Rain') advice.push('Use caution on slippery paths; keep visibility high.');
+    const weatherState = (weather && (weather.state || weather)) || 'Clear';
+    if (weatherState === 'Storm') advice.push('Seek shelter; avoid low-lying or flooded areas.');
+    if (weatherState === 'Rain') advice.push('Use caution on slippery paths; keep visibility high.');
     if (hotspotsOccurred) advice.push('Move away from the hotspot cluster and regroup.');
     if (hasIncidents && (effective === 'danger' || effective === 'critical')) {
         advice.push('Share your live location with a trusted contact.');
@@ -78,7 +82,7 @@ async function calculateRiskScore(geofenceId) {
 
     // Calculate currently active danger level (Time + Weather aware) with a single weather sample
     const baseLevel = getEffectiveDangerLevel(f);
-    const weather = await getWeatherForGeofence(f);
+    const weather = await getWeatherForGeofence(f); // now a detailed object
     const effectiveLevel = adjustDangerLevelByWeather(baseLevel, weather);
 
     // 1. SPATIAL CLUSTERING (HOTSPOTS)
@@ -112,8 +116,18 @@ async function calculateRiskScore(geofenceId) {
     if (hotspotsOccurred) score += 20; // +20 for detected hotspots
 
     // (Note: calculateEffectiveLevel already considers weather, but we add direct score boosts here for AI logic)
-    if (weather === 'Rain') score += 10;
-    if (weather === 'Storm') score += 20;
+    const weatherState = (weather && weather.state) || weather;
+    if (weatherState === 'Rain') score += 10;
+    if (weatherState === 'Storm') score += 20;
+
+    // Additional score adjustments from detailed weather metrics
+    const wind = Number(weather?.wind_speed ?? 0);
+    const vis = Number(weather?.visibility ?? Infinity);
+    if (!Number.isNaN(wind)) {
+        if (wind >= 25) score += 20;
+        else if (wind >= 15) score += 10;
+    }
+    if (!Number.isNaN(vis) && vis < 1000) score += 10;
 
     const hour = new Date().getHours();
     if (hour >= 21 || hour <= 5) score += 15; // Night risk
@@ -129,12 +143,13 @@ async function calculateRiskScore(geofenceId) {
         geofenceName: f.name,
         baseDangerLevel: f.dangerLevel.toUpperCase(),
         effectiveDangerLevel: effectiveLevel.toUpperCase(),
-        weather: weather,
+        weather: weather || { state: 'Clear' },
         hour: hour,
         incidentCount: logs.length,
         hotspotsOccurred: hotspotsOccurred,
         recentTrends: logs.length > 5 ? "Escalating" : "Stable",
-        timeRules: (f.timeRules || []).map(r => `${r.startTime}-${r.endTime}: ${r.dangerLevel}`).join(', ')
+        timeRules: (f.timeRules || []).map(r => `${r.startTime}-${r.endTime}: ${r.dangerLevel}`).join(', '
+        )
     };
 
     let aiResult = await generateSafetyAdvice(context);

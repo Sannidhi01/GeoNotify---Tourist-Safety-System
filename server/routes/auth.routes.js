@@ -89,16 +89,10 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Check role permissions
-        if (role === 'admin' && user.role !== 'admin') {
+        // Enforce exact role match for login selection
+        if (user.role !== role) {
             return res.status(403).json({
-                error: 'You do not have admin permissions'
-            });
-        }
-
-        if (role === 'rescue' && user.role !== 'rescue') {
-            return res.status(403).json({
-                error: 'You do not have rescue team permissions'
+                error: `This account is registered as ${user.role}. Please log in as ${user.role}.`
             });
         }
 
