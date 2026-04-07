@@ -2,14 +2,47 @@
 
 // Node 18+ has global fetch
 
+const DEFAULT_OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct";
+const DEFAULT_OPENROUTER_MAX_TOKENS = 120;
+
+function getOpenRouterMaxTokens() {
+    const raw = Number(process.env.OPENROUTER_MAX_TOKENS || DEFAULT_OPENROUTER_MAX_TOKENS);
+
+    if (!Number.isFinite(raw)) {
+        return DEFAULT_OPENROUTER_MAX_TOKENS;
+    }
+
+    return Math.min(Math.max(Math.floor(raw), 32), 400);
+}
+
+function buildFallbackAdvice(context = {}) {
+    const zoneName = context.geofenceName || "this area";
+    const effectiveLevel = (context.effectiveDangerLevel || context.baseDangerLevel || "unknown").toString().toUpperCase();
+    const distance = Number(context.touristDistance);
+    const hasDistance = Number.isFinite(distance);
+    const weather = typeof context.weather === "string"
+        ? context.weather
+        : context.weather?.state || "current conditions";
+
+    return {
+        reasoning: `${zoneName} is being monitored as ${effectiveLevel} risk under ${weather}.`,
+        recommendation: hasDistance && distance <= Number(context.threshold || 0)
+            ? "Avoid entering and move to a safer nearby route."
+            : "Stay alert and avoid approaching the marked zone."
+    };
+}
+
+async function getOllamaFallback(context) {
+    const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+    return await generateOllamaAdvice(context) || buildFallbackAdvice(context);
+}
+
 async function generateSafetyAdvice(context) {
-    // const apiKey = process.env.OPENROUTER_API_KEY;
-    const apiKey = "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";
+    const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
         console.warn("OPENROUTER_API_KEY missing. Falling back to Ollama.");
-        const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
-        return generateOllamaAdvice(context);
+        return getOllamaFallback(context);
     }
 
     const {
@@ -77,16 +110,15 @@ Respond ONLY in JSON:
                 "X-Title": "GeoNotify Safety AI"
             },
             body: JSON.stringify({
-                model:"mistral/mistral-7b-instruct-v0.1.Q4_0.gguf",
-
-                // model: "meta-llama/llama-3.1-8b-instruct",
+                model: DEFAULT_OPENROUTER_MODEL,
                 messages: [
                     {
                         role: "user",
                         content: prompt
                     }
                 ],
-                temperature: 0.3
+                temperature: 0.7,
+                max_tokens: getOpenRouterMaxTokens()
             }),
             signal: controller.signal
         });
@@ -94,20 +126,19 @@ Respond ONLY in JSON:
         clearTimeout(timeout);
 
         const data = await response.json().catch(() => ({}));
+        console.log("OpenRouter raw response:", data);
 
         if (!response.ok) {
             const message = data?.error?.message || `HTTP ${response.status}`;
             console.warn("OpenRouter API error:", message);
-            const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
-            return generateOllamaAdvice(context);
+            return getOllamaFallback(context);
         }
 
         const content = data?.choices?.[0]?.message?.content?.trim();
 
         if (!content) {
             console.warn("OpenRouter returned empty response");
-            const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
-            return generateOllamaAdvice(context);
+            return getOllamaFallback(context);
         }
 
         console.log("AI Logic: OpenRouter response received");
@@ -117,8 +148,7 @@ Respond ONLY in JSON:
             const json = content.replace(/```json|```/g, "").trim();
             const parsed = JSON.parse(json);
             if (!parsed || !parsed.recommendation) {
-                const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
-                return generateOllamaAdvice(context);
+                return getOllamaFallback(context);
             }
             return parsed;
 
@@ -126,8 +156,7 @@ Respond ONLY in JSON:
 
             console.warn("AI JSON parse failed. Raw output:", content);
 
-            const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
-            const fallback = await generateOllamaAdvice(context);
+            const fallback = await getOllamaFallback(context);
             return fallback || {
                 reasoning: "AI generated safety insight",
                 recommendation: content.substring(0, 120)
@@ -143,8 +172,7 @@ Respond ONLY in JSON:
             console.error("OpenRouter API error:", err.message);
         }
 
-        const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
-        return generateOllamaAdvice(context);
+        return getOllamaFallback(context);
     }
 }
 

@@ -15,6 +15,19 @@ let editingFenceId = null;
 
 export const fenceLayers = {};
 
+function formatWeather(weather) {
+    if (!weather) return 'Unknown';
+    if (typeof weather === 'string') return weather;
+
+    const parts = [];
+    if (weather.state) parts.push(weather.state);
+    if (weather.temp != null) parts.push(`${weather.temp} C`);
+    if (weather.wind_speed != null) parts.push(`wind ${weather.wind_speed} m/s`);
+    if (weather.visibility != null) parts.push(`visibility ${weather.visibility} m`);
+
+    return parts.join(', ') || 'Unknown';
+}
+
 function renderAiRiskTag(aiRisk) {
     if (!aiRisk) {
         return `
@@ -34,23 +47,24 @@ function renderAiRiskTag(aiRisk) {
         "#10b981";
 
     const reasonsText = Array.isArray(aiRisk.reasons) ? aiRisk.reasons.join(', ') : '';
+    const combinedAdvice = [aiRisk.reasoning, aiRisk.recommendation].filter(Boolean).join(' ');
+    const weatherText = formatWeather(aiRisk.weather);
 
     return `
         <div class="ai-risk-tag"
             style="background:#f3f4f6;padding:10px;border-radius:8px;margin-top:10px;
             font-size:0.85rem;border-left:5px solid ${riskColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
 
-            <strong style="color:#4f46e5; display:block; margin-bottom:4px;">AI SAFETY ENGINE</strong>
+            <strong style="color:#4f46e5; display:block; margin-bottom:4px;">AI Safety Engine Advice</strong>
             <div style="margin-bottom:8px; color:#475569;">
-                <strong>Reasoning:</strong> ${aiRisk.reasoning || 'Analyzing factors...'}
-            </div>
-
-            <div style="background:white; padding:8px; border-radius:6px; border:1px solid ${riskColor}33;">
-                <strong style="color:${riskColor};">Advice:</strong> ${aiRisk.recommendation || ''}
+                ${combinedAdvice || 'Analyzing factors...'}
             </div>
 
             <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8;">
                 <span>Factors: ${reasonsText}</span>
+            </div>
+            <div style="margin-top:4px; font-size:0.75rem; color:#94a3b8;">
+                <span>Weather: ${weatherText}</span>
             </div>
         </div>
     `;
@@ -356,24 +370,26 @@ export async function loadFences() {
                         aiRisk.level === "HIGH" ? "#ef4444" :
                         aiRisk.level === "MEDIUM" ? "#f59e0b" :
                         "#10b981";
+                    const combinedAdvice = [aiRisk.reasoning, aiRisk.recommendation].filter(Boolean).join(' ');
+                    const factorsText = Array.isArray(aiRisk.reasons) ? aiRisk.reasons.join(', ') : '';
+                    const weatherText = formatWeather(aiRisk.weather);
 
                     aiBlock = `
                         <div class="ai-risk-tag"
                             style="background:#f3f4f6;padding:10px;border-radius:8px;margin-top:10px;
                             font-size:0.85rem;border-left:5px solid ${riskColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
 
-                            <strong style="color:#4f46e5; display:block; margin-bottom:4px;">🤖 AI SAFETY ENGINE</strong>
+                            <strong style="color:#4f46e5; display:block; margin-bottom:4px;">AI Safety Engine Advice</strong>
                             
                             <div style="margin-bottom:8px; color:#475569;">
-                                <strong>Reasoning:</strong> ${aiRisk.reasoning || 'Analyzing factors...'}
-                            </div>
-
-                            <div style="background:white; padding:8px; border-radius:6px; border:1px solid ${riskColor}33;">
-                                <strong style="color:${riskColor};">Advice:</strong> ${aiRisk.recommendation}
+                                ${combinedAdvice || 'Analyzing factors...'}
                             </div>
 
                             <div style="margin-top:8px; font-size:0.75rem; color:#94a3b8;">
-                                <span>Factors: ${aiRisk.reasons.join(', ')}</span>
+                                <span>Factors: ${factorsText}</span>
+                            </div>
+                            <div style="margin-top:4px; font-size:0.75rem; color:#94a3b8;">
+                                <span>Weather: ${weatherText}</span>
                             </div>
                         </div>
                     `;
