@@ -1,13 +1,13 @@
-// server/services/openrouter.service.js
+// server/services/openrouter.js
 
-const { OpenRouter } = require('@openrouter/sdk');
+// Node 18+ has global fetch
 
 async function generateSafetyAdvice(context) {
-    // const apiKey = process.env.OPENROUTER_API_KEY;
-    const apiKey = "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";
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
-        console.warn('OPENROUTER_API_KEY missing. Falling back to Ollama.');
+        console.warn("OPENROUTER_API_KEY missing. Falling back to Ollama.");
         const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
         return generateOllamaAdvice(context);
     }
@@ -30,127 +30,119 @@ async function generateSafetyAdvice(context) {
         ? weather
         : (weather && `${weather.state}${weather.temp != null ? `, ${weather.temp}°C` : ''}${weather.wind_speed != null ? `, wind ${weather.wind_speed} m/s` : ''}`) || 'Clear';
 
-    const prompt = `You are an AI safety assistant helping tourists avoid dangerous areas.
+    const prompt = `
+You are an AI safety assistant helping tourists avoid dangerous areas.
 
-Zone: ${geofenceName}
-Base danger: ${baseDangerLevel}
-Effective danger: ${effectiveDangerLevel}
+ZONE INFORMATION
+Area: ${geofenceName}
+Base danger level: ${baseDangerLevel}
+Effective danger level: ${effectiveDangerLevel}
 
-Context:
-- Distance: ${touristDistance} meters
-- Threshold: ${threshold} meters
-- Monitoring start: ${touristEnteredTime}
-- Time: ${hour}:00
-- Incidents (24h): ${incidentCount}
-- Hotspots: ${hotspotsOccurred ? 'YES' : 'NO'}
-- Weather: ${weatherSummary}
-- Time rules: ${timeRules || 'None'}
+TOURIST CONTEXT
+Distance from zone: ${touristDistance} meters
+Warning threshold: ${threshold} meters
+Monitoring started: ${touristEnteredTime}
 
-Task: Provide a brief reasoning (1-2 sentences) about why this is risky and a concise recommendation (under 15 words) the tourist can follow before reaching the zone.
+ENVIRONMENT
+Weather: ${weatherSummary}
+Time: ${hour}:00
+Incidents last 24h: ${incidentCount}
+Hotspots detected: ${hotspotsOccurred ? "YES" : "NO"}
 
-Respond ONLY in JSON with the exact keys: { "reasoning": string, "recommendation": string }
+ADMIN RULES
+Time rules: ${timeRules || "None"}
+
+TASK
+Explain the risk and give short safety advice BEFORE the tourist reaches the zone.
+
+Respond ONLY in JSON:
+
+{
+ "reasoning": "Short explanation why the area is risky",
+ "recommendation": "Short safety instruction under 15 words"
+}
 `;
 
-    const client = new OpenRouter({
-        apiKey,
-        defaultHeaders: {
-            'HTTP-Referer':'http://localhost:3000',
-            'X-OpenRouter-Title': 'GeoNotify Safety AI'
-        }
-    });
-
-    const model = 'openai/gpt-5.2';
-
-    const timeoutMs = Number(process.env.OPENROUTER_TIMEOUT_MS || 5000);
-
-    async function fetchOpenRouterDirect() {
-        const url = 'https://openrouter.ai/api/v1/chat/completions';
-        try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-            const resp = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': process.env.APP_ORIGIN || 'http://localhost:3000',
-                    'X-Title': process.env.APP_TITLE || 'GeoNotify Safety AI'
-                },
-                body: JSON.stringify({
-                    model,
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.2
-                }),
-                signal: controller.signal
-            });
-            clearTimeout(timer);
-            if (!resp.ok) {
-                // capture body for debugging (could be text or json)
-                let bodyText = await resp.text().catch(() => '');
-                let parsed = {};
-                try { parsed = JSON.parse(bodyText); } catch (e) {}
-                console.warn('OpenRouter REST fallback received non-OK response', { status: resp.status, body: parsed || bodyText });
-                const errMsg = parsed?.error?.message || parsed?.message || bodyText || `HTTP ${resp.status}`;
-                throw new Error(errMsg);
-            }
-            return await resp.json();
-        } catch (err) {
-            throw err;
-        }
-    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
-        // Try SDK first
-        let sdkResp;
-        try {
-            // Use chatGenerationParams object to satisfy SDK input validation
-            sdkResp = await Promise.race([
-                client.chat.send({
-                    model,
-                    chatGenerationParams: {
-                        messages: [{ role: 'user', content: prompt }],
-                        temperature: 0.2
-                    },
-                    stream: false
-                }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('OpenRouter SDK timeout')), timeoutMs))
-            ]);
-        } catch (sdkErr) {
-            // If SDK validation error referencing chatGenerationParams, try direct REST fallback
-            const msg = String(sdkErr?.message || sdkErr);
-            console.warn('OpenRouter SDK error:', { message: msg, stack: sdkErr?.stack });
-            if (msg.includes('chatGenerationParams') || msg.includes('Invalid input')) {
-                console.warn('OpenRouter SDK validation error, using REST fallback:', msg);
-                sdkResp = await fetchOpenRouterDirect();
-            } else {
-                throw sdkErr;
-            }
-        }
 
-        const content = sdkResp?.choices?.[0]?.message?.content?.trim();
-        if (!content) {
-            console.warn('OpenRouter returned empty response');
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "GeoNotify Safety AI"
+            },
+            body: JSON.stringify({
+                model:"mistral/mistral-7b-instruct-v0.1.Q4_0.gguf",
+
+                // model: "meta-llama/llama-3.1-8b-instruct",
+                messages: [
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.3
+            }),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const message = data?.error?.message || `HTTP ${response.status}`;
+            console.warn("OpenRouter API error:", message);
             const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
             return generateOllamaAdvice(context);
         }
 
-        const cleaned = content.replace(/```json|```/g, '').trim();
+        const content = data?.choices?.[0]?.message?.content?.trim();
+
+        if (!content) {
+            console.warn("OpenRouter returned empty response");
+            const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
+            return generateOllamaAdvice(context);
+        }
+
+        console.log("AI Logic: OpenRouter response received");
+
         try {
-            const parsed = JSON.parse(cleaned);
+
+            const json = content.replace(/```json|```/g, "").trim();
+            const parsed = JSON.parse(json);
             if (!parsed || !parsed.recommendation) {
                 const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
                 return generateOllamaAdvice(context);
             }
             return parsed;
-        } catch (parseErr) {
-            console.warn('AI JSON parse failed. Raw output:', cleaned);
+
+        } catch (parseError) {
+
+            console.warn("AI JSON parse failed. Raw output:", content);
+
             const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
             const fallback = await generateOllamaAdvice(context);
-            return fallback || { reasoning: 'AI generated safety insight', recommendation: cleaned.substring(0, 120) };
+            return fallback || {
+                reasoning: "AI generated safety insight",
+                recommendation: content.substring(0, 120)
+            };
+
         }
 
     } catch (err) {
-        console.warn('OpenRouter error, attempting Ollama fallback:', err?.message || err);
+
+        if (err.name === "AbortError") {
+            console.log("OpenRouter request timed out. Falling back.");
+        } else {
+            console.error("OpenRouter API error:", err.message);
+        }
+
         const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
         return generateOllamaAdvice(context);
     }
