@@ -2,7 +2,7 @@
 
 // Node 18+ has global fetch
 
-const DEFAULT_OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct";
+const DEFAULT_OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct";
 const DEFAULT_OPENROUTER_MAX_TOKENS = 120;
 
 function getOpenRouterMaxTokens() {
