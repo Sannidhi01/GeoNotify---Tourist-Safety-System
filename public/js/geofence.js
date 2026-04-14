@@ -120,9 +120,25 @@ export function initGeofence(mapInstance) {
         document.getElementById('draw-start').textContent =
             drawMode ? '⏹️ Stop Drawing' : '✏️ Start Drawing';
 
-        if (!drawMode && currentCoords.length === 0) {
-            drawMarkers.forEach(m => mapInstance.removeLayer(m));
-            drawMarkers = [];
+        if (!drawMode) {
+            if (currentCoords.length === 0) {
+                drawMarkers.forEach(m => mapInstance.removeLayer(m));
+                drawMarkers = [];
+                return;
+            }
+
+            if (currentCoords.length < 3) {
+                return alert('Need at least 3 points to save a geofence');
+            }
+
+            const name = document.getElementById('name').value.trim();
+            const description = document.getElementById('description').value.trim();
+
+            if (!name) {
+                return alert('Enter geofence name before saving');
+            }
+
+            showDangerLevelModal(name, description, currentCoords);
         }
 
     });
@@ -139,7 +155,7 @@ export function initGeofence(mapInstance) {
         if (!name) return alert('Enter geofence name');
         if (currentCoords.length < 3) return alert('Need at least 3 points');
 
-        showDangerLevelModal(name, description, currentCoords);
+        await saveFenceDirect(name, description, currentCoords);
 
     });
 
@@ -199,15 +215,8 @@ export function applyManualCoords(rawText) {
     return { ok: true, count: coords.length };
 }
 
-export async function saveFence(name, description, coords) {
-
-    const nearMeters = parseInt(document.getElementById('near-meters').value) || 100;
-    const dangerLevel = document.querySelector('input[name="danger"]:checked').value;
-    const autoNotifyRescue = document.getElementById('auto-notify').checked;
-    const timeRules = getTimeRules();
-
+async function persistFence(payload, { resetForm = true, closeConfigModal = false } = {}) {
     try {
-
         const token = getToken();
 
         const resp = await fetch(API + '/geofences', {
@@ -216,39 +225,72 @@ export async function saveFence(name, description, coords) {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify({
-                name,
-                description,
-                coordinates: coords,
-                nearMeters,
-                dangerLevel,
-                autoNotifyRescue,
-                timeRules
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!resp.ok) throw new Error('Save failed');
 
         const saved = await resp.json();
+        alert(`✓ Saved ${(payload.dangerLevel || 'safe').toUpperCase()} zone: ${saved.name}`);
 
-        alert(`✓ Saved ${dangerLevel.toUpperCase()} zone: ${saved.name}`);
+        if (resetForm) {
+            drawMarkers.forEach(m => m.remove());
+            drawMarkers = [];
+            currentCoords = [];
+            drawMode = false;
 
-        drawMarkers.forEach(m => m.remove());
-        drawMarkers = [];
-        currentCoords = [];
-        drawMode = false;
+            document.getElementById('draw-start').textContent = '✏️ Start Drawing';
+            document.getElementById('name').value = '';
+            document.getElementById('description').value = '';
+        }
 
-        document.getElementById('draw-start').textContent = '✏️ Start Drawing';
-        document.getElementById('name').value = '';
-        document.getElementById('description').value = '';
-
-        closeModal();
+        if (closeConfigModal) {
+            closeModal();
+        }
 
         loadFences();
-
+        return saved;
     } catch (err) {
         alert('Error: ' + err.message);
+        throw err;
     }
+}
+
+export async function saveFence(name, description, coords) {
+
+    const nearMeters = parseInt(document.getElementById('near-meters').value) || 100;
+    const dangerLevel = document.querySelector('input[name="danger"]:checked').value;
+    const autoNotifyCheckbox = document.getElementById('auto-notify');
+    const autoNotifyRescue = autoNotifyCheckbox ? autoNotifyCheckbox.checked : false;
+    const timeRules = getTimeRules();
+
+    await persistFence({
+        name,
+        description,
+        coordinates: coords,
+        nearMeters,
+        dangerLevel,
+        autoNotifyRescue,
+        timeRules
+    }, {
+        resetForm: true,
+        closeConfigModal: true
+    });
+}
+
+export async function saveFenceDirect(name, description, coords) {
+    await persistFence({
+        name,
+        description,
+        coordinates: coords,
+        nearMeters: 100,
+        dangerLevel: 'safe',
+        autoNotifyRescue: false,
+        timeRules: []
+    }, {
+        resetForm: true,
+        closeConfigModal: false
+    });
 }
 
 export async function loadFences() {

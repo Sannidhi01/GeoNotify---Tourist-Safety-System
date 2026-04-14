@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoNotify - Tourist Safety System</title>
+    <link rel="stylesheet" href="css/login-styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+    <div class="login-container">
+        <!-- Left Section: Features & Branding -->
+        <div class="features-section">
+            <div class="brand">
+                <div class="logo">🌍</div>
+                <h1>GeoNotify</h1>
+                <p class="tagline">Your Safety Guardian</p>
+            </div>
+
+            <div class="features-list">
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-map-location-dot"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Real-Time Geofencing</h3>
+                        <p>Get alerts when you enter or approach monitored safety zones</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-phone-volume"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Instant Rescue Alert</h3>
+                        <p>Automatically notify rescue teams for danger and critical zone events</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Weather-Aware Risk</h3>
+                        <p>Zone severity is adjusted using live or simulated weather conditions</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>AI-Powered Insights</h3>
+                        <p>AI combines incidents, time, and weather to generate safety advice</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-list-check"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Rescue Dashboard</h3>
+                        <p>Track active alerts and recent safety events from the rescue console</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Emergency Contacts</h3>
+                        <p>Store trusted contacts during signup and include them in emergency outreach</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Section: Auth Forms -->
+        <div class="auth-section">
+            <div class="auth-container">
+                <!-- Toggle Buttons -->
+                <div class="auth-toggle">
+                    <button class="toggle-btn active" id="login-toggle">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                    <button class="toggle-btn" id="register-toggle">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" class="auth-form active">
+                    <h2>Welcome Back!</h2>
+                    <p class="form-subtitle">Sign in to your account</p>
+
+                    <div class="form-group">
+                        <label for="login-email">
+                            <i class="fas fa-envelope"></i> Email Address
+                        </label>
+                        <input
+                            type="email"
+                            id="login-email"
+                            placeholder="your@email.com"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="login-password">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <input
+                            type="password"
+                            id="login-password"
+                            placeholder="••••••••"
+                            required
+                        />
+                    </div>
+
+                    <button type="button" class="btn-submit" onclick="handleLogin()">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+
+                    <div class="auth-divider">OR</div>
+
+                    <p class="form-footer">
+                        New here?
+                        <a href="#" onclick="toggleForms(event)">Create an account</a>
+                    </p>
+                </form>
+
+                <!-- Register Form -->
+                <form id="register-form" class="auth-form">
+                    <h2>Join Us Today!</h2>
+                    <p class="form-subtitle">Create your account to get started</p>
+
+                    <!-- Personal Info -->
+                    <div class="form-section-title">Personal Information</div>
+                    <div class="form-group">
+                        <label for="reg-name">
+                            <i class="fas fa-user"></i> Full Name <span style="color: #e74c3c;">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="reg-name"
+                            placeholder="user name"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-email">
+                            <i class="fas fa-envelope"></i> Email Address <span style="color: #e74c3c;">*</span>
+                        </label>
+                        <input
+                            type="email"
+                            id="reg-email"
+                            placeholder="your@email.com"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-phone">
+                            <i class="fas fa-phone"></i> Phone Number <span id="reg-phone-required" style="color: #e74c3c;">*</span>
+                        </label>
+                        <input
+                            type="tel"
+                            id="reg-phone"
+                            placeholder="+1 (555) 000-0000"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-password">
+                            <i class="fas fa-lock"></i> Password <span style="color: #e74c3c;">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            id="reg-password"
+                            placeholder="••••••••"
+                            required
+                        />
+                    </div>
+
+                    <!-- User Type Selection -->
+                    <div class="form-section-title">User Type</div>
+                    <div class="role-selection">
+                        <label class="role-option">
+                            <input type="radio" name="reg-role" value="tourist" checked onchange="toggleEmergencyContact()" />
+                            <span class="role-icon">🧳</span>
+                            <span>Tourist</span>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="reg-role" value="rescue" onchange="toggleEmergencyContact()" />
+                            <span class="role-icon">🚓</span>
+                            <span>Rescue Team</span>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="reg-role" value="admin" onchange="toggleEmergencyContact()" />
+                            <span class="role-icon">👑</span>
+                            <span>Admin</span>
+                        </label>
+                    </div>
+
+                    <!-- Emergency Contact (Only for Tourist) -->
+                    <div id="emergency-contact-section">
+                        <div class="form-section-title">Emergency Contact (Optional)</div>
+                        <div class="form-group">
+                            <label for="reg-em-name">
+                                <i class="fas fa-user-circle"></i> Contact Name
+                            </label>
+                            <input
+                                type="text"
+                                id="reg-em-name"
+                                placeholder="Emergency contact name"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reg-em-phone">
+                                <i class="fas fa-phone"></i> Contact Phone
+                            </label>
+                            <input
+                                type="tel"
+                                id="reg-em-phone"
+                                placeholder="Emergency contact number"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reg-em-relation">
+                                <i class="fas fa-people-arrows"></i> Relationship
+                            </label>
+                            <input
+                                type="text"
+                                id="reg-em-relation"
+                                placeholder="e.g., Mother, Father, Friend"
+                            />
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-submit" onclick="handleRegister()">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </button>
+
+                    <p class="form-footer">
+                        Already have an account?
+                        <a href="#" onclick="toggleForms(event)">Sign in here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/login-handler.js"></script>
+</body>
+</html>
+

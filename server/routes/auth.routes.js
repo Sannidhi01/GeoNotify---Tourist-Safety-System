@@ -17,10 +17,17 @@ function generateToken(user) {
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password, phone, emergencyContact, role } = req.body;
+        const formattedRole = role && ['tourist', 'admin', 'rescue'].includes(role) ? role : 'tourist';
 
         if (!name || !email || !password) {
             return res.status(400).json({
                 error: 'Name, email, and password are required'
+            });
+        }
+
+        if (formattedRole === 'tourist' && !String(phone || '').trim()) {
+            return res.status(400).json({
+                error: 'Phone number is required for tourist accounts'
             });
         }
 
@@ -30,9 +37,6 @@ router.post('/register', async (req, res) => {
         }
 
         const passwordHash = await bcrypt.hash(password, 10);
-
-        // Create user
-        const formattedRole = role && ['tourist', 'admin', 'rescue'].includes(role) ? role : 'tourist';
 
         const user = await User.create({
             name,
@@ -65,17 +69,11 @@ router.post('/register', async (req, res) => {
 // Login with role selection
 router.post('/login', async (req, res) => {
     try {
-        const { email, password, role } = req.body;
+        const { email, password } = req.body;
 
-        if (!email || !password || !role) {
+        if (!email || !password) {
             return res.status(400).json({
-                error: 'Email, password, and role are required'
-            });
-        }
-
-        if (!['tourist', 'admin', 'rescue'].includes(role)) {
-            return res.status(400).json({
-                error: 'Invalid role. Must be tourist, admin, or rescue'
+                error: 'Email and password are required'
             });
         }
 
@@ -89,28 +87,33 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Enforce exact role match for login selection
-        if (user.role !== role) {
-            return res.status(403).json({
-                error: `This account is registered as ${user.role}. Please log in as ${user.role}.`
-            });
-        }
-
         const token = generateToken(user);
 
         res.json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                role: user.role,
-                loginAs: role
-            },
-            token
+            token,
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role
         });
     } catch (err) {
         console.error('Login error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Check if email exists (for frontend toggle)
+router.get('/check', async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ error: 'Email required' });
+        }
+        const user = await User.findOne({ email });
+        res.json({ exists: !!user });
+    } catch (err) {
+        console.error('Check email error:', err);
         res.status(500).json({ error: err.message });
     }
 });

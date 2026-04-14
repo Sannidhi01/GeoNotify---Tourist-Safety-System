@@ -64,18 +64,8 @@ export function updateUIForUser() {
     // Admin requested: remove AI safety insights panel
     document.getElementById('ai-insights-panel').style.display = 'none';
   } else {
-    userInfo.innerHTML = '<em>Not logged in</em>';
-    authButtons.innerHTML = `
-        <button id="btn-show-register" class="btn-primary">Register</button>
-        <button id="btn-show-login" class="btn-secondary">Login</button>
-      `;
-    document.getElementById('btn-show-register').onclick = showRegister;
-    document.getElementById('btn-show-login').onclick = showLogin;
-
-    document.getElementById('admin-controls').style.display = 'none';
-    document.getElementById('rescue-controls').style.display = 'none';
-    document.getElementById('tourist-controls').style.display = 'none';
-    document.getElementById('ai-insights-panel').style.display = 'none';
+    // User is not logged in - redirect to login page
+    window.location.href = '/login.html';
   }
 
   // Position panels to avoid overlap
@@ -103,7 +93,7 @@ export function showRegister() {
 
   title.textContent = 'Register New Account';
   content.innerHTML = `
-      <input type="text" id="reg-name" placeholder="Full Name" required>
+      <input type="text" id="reg-name" placeholder="user name" required>
       <input type="email" id="reg-email" placeholder="Email" required>
       <input type="password" id="reg-password" placeholder="Password" required>
       <input type="tel" id="reg-phone" placeholder="Phone Number (optional, E.164 e.g. +919876543210)">
@@ -222,44 +212,15 @@ export function showDangerLevelModal(name, description, currentCoords) {
       <label>Warning Distance (meters):</label>
       <input type="number" id="near-meters" value="100" min="10" max="1000">
       
-      <h4>Danger Level:</h4>
+      <h4>Zone Safety Level:</h4>
       <div class="role-selector">
         <label class="role-option">
           <input type="radio" name="danger" value="safe" checked>
-          <span style="color:#007bff;">✅ Safe</span>
-          <small>General area</small>
-        </label>
-        
-        <label class="role-option">
-          <input type="radio" name="danger" value="caution">
-          <span style="color:#FFD700;">⚡ Caution</span>
-          <small>Be aware</small>
-        </label>
-        
-        <label class="role-option">
-          <input type="radio" name="danger" value="warning">
-          <span style="color:#FFA500;">⚠️ Warning</span>
-          <small>Stay alert</small>
-        </label>
-        
-        <label class="role-option">
-          <input type="radio" name="danger" value="danger">
-          <span style="color:#FF0000;">⚠️ Danger</span>
-          <small>High risk area</small>
-        </label>
-        
-        <label class="role-option">
-          <input type="radio" name="danger" value="critical">
-          <span style="color:#8B0000;">🚨 Critical</span>
-          <small>Extreme danger</small>
+          <span style="color:#4CAF50;">✅ Safe Zone</span>
+          <small>General tourist area</small>
         </label>
       </div>
       
-      <label style="display:flex; align-items:center; margin:15px 0;">
-        <input type="checkbox" id="auto-notify" style="width:auto; margin-right:10px;">
-        <span>🚓 Auto-notify rescue team for danger/critical zones</span>
-      </label>
-
       <div style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;">
         <h4 style="margin-bottom:10px;">Manual Coordinates</h4>
         <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">
@@ -274,7 +235,7 @@ export function showDangerLevelModal(name, description, currentCoords) {
 
       <div style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;">
         <h4 style="margin-bottom:10px;">🕒 Time-Based Rules</h4>
-        <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">Set different danger levels for specific times of day.</p>
+        <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">Set different safety levels for specific times of day.</p>
         
         <div id="time-rules-list" style="margin-bottom:15px;">
            <!-- Rules populated here -->
@@ -287,10 +248,6 @@ export function showDangerLevelModal(name, description, currentCoords) {
                 <input type="time" id="rule-end" style="margin:0;">
                 <select id="rule-level" style="margin:0; padding:5px;">
                     <option value="safe">Safe</option>
-                    <option value="caution">Caution</option>
-                    <option value="warning">Warning</option>
-                    <option value="danger">Danger</option>
-                    <option value="critical">Critical</option>
                 </select>
                 <button type="button" id="btn-add-timerule" 
                     style="padding:5px 12px; background:#4f46e5; color:white; border:none; border-radius:4px; cursor:pointer;">
@@ -307,16 +264,6 @@ export function showDangerLevelModal(name, description, currentCoords) {
     `;
 
   modal.style.display = 'flex';
-
-  // Auto-check notify for danger/critical
-  document.querySelectorAll('input[name="danger"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      const autoNotify = document.getElementById('auto-notify');
-      if (['danger', 'critical'].includes(e.target.value)) {
-        autoNotify.checked = true;
-      }
-    });
-  });
 
   document.getElementById('btn-save-fence').onclick = () => saveFence(name, description, currentCoords);
   document.getElementById('btn-save-cancel').onclick = closeModal;
@@ -365,21 +312,13 @@ export function getTimeRules() {
 }
 export function getDangerColor(dangerLevel) {
   const colors = {
-    'critical': '#8B0000',
-    'danger': '#FF0000',
-    'warning': '#FFA500',
-    'caution': '#FFFF00',
-    'safe': '#007bff'
+    'safe': '#4CAF50'
   };
-  return colors[dangerLevel] || '#007bff';
+  return colors[dangerLevel] || '#4CAF50';
 }
 
 export function getDangerEmoji(dangerLevel) {
   const emojis = {
-    'critical': '🚨',
-    'danger': '⚠️',
-    'warning': '⚠️',
-    'caution': '⚡',
     'safe': '✅'
   };
   return emojis[dangerLevel] || '✅';

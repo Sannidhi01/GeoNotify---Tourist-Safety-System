@@ -18,9 +18,8 @@ export function logout() {
     localStorage.clear();
     currentUser = null;
     stopRescueUpdates();
-    updateUIForUser();
     alert('✓ Logged out successfully');
-    location.reload();
+    window.location.href = '/login.html';
 }
 
 export async function register() {
@@ -28,6 +27,7 @@ export async function register() {
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const phone = document.getElementById('reg-phone').value.trim();
+    const role = document.querySelector('input[name="reg-role"]:checked').value;
 
     const emName = document.getElementById('reg-em-name').value.trim();
     const emPhone = document.getElementById('reg-em-phone').value.trim();
@@ -37,9 +37,11 @@ export async function register() {
         return alert('Please fill in all required fields');
     }
 
-    try {
-        const role = document.querySelector('input[name="reg-role"]:checked').value;
+    if (role === 'tourist' && !phone) {
+        return alert('Phone number is required for tourist accounts');
+    }
 
+    try {
         const emergencyContact = (emName || emPhone) ? {
             name: emName,
             phone: emPhone,

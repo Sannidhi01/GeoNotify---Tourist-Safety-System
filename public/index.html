@@ -13,6 +13,12 @@
       href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
     />
     <link rel="stylesheet" href="css/styles.css?v=2" />
+    <script>
+      // Redirect to login if not authenticated
+      if (!localStorage.getItem('token')) {
+        window.location.href = '/login.html';
+      }
+    </script>
   </head>
 
   <body>
@@ -23,26 +29,11 @@
       <div id="auth-buttons"></div>
     </header>
 
-    <div class="info-box danger-legend">
+    <div class="info-box danger-legend" style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(45, 212, 191, 0.1) 100%); border-top: 3px solid #4CAF50;">
+      <h3 style="margin: 0 0 12px 0; color: #2d7a6b; font-size: 0.95rem;">🗺️ Zone Safety Levels</h3>
       <div class="danger-item">
-        <div class="danger-box" style="background: #007bff"></div>
-        <span>✅ Safe</span>
-      </div>
-      <div class="danger-item">
-        <div class="danger-box" style="background: #ffff00"></div>
-        <span>⚡ Caution</span>
-      </div>
-      <div class="danger-item">
-        <div class="danger-box" style="background: #ffa500"></div>
-        <span>⚠️ Warning</span>
-      </div>
-      <div class="danger-item">
-        <div class="danger-box" style="background: #ff0000"></div>
-        <span>⚠️ Danger</span>
-      </div>
-      <div class="danger-item">
-        <div class="danger-box" style="background: #8b0000"></div>
-        <span>🚨 Critical</span>
+        <div class="danger-box" style="background: linear-gradient(135deg, #4CAF50, #45a049); box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
+        <span style="font-weight: 500;">✅ Safe Zone</span>
       </div>
     </div>
 
@@ -172,32 +163,6 @@
         <h2 id="modal-title"></h2>
         <div id="modal-content"></div>
       </div>
-    </div>
-
-    <div class="info-box">
-      <h3>ℹ️ How GeoNotify Works</h3>
-      <ul>
-        <li>
-          <strong>👑 Admin:</strong> Create and manage geofenced zones. Set
-          danger levels and configure automatic rescue alerts.
-        </li>
-        <li>
-          <strong>🧳 Tourist:</strong> Receive real-time information and alerts.
-        </li>
-        <li>
-          <strong>🚓 Rescue Team:</strong> Monitor active danger alerts. Receive
-          automatic notifications when tourists enter critical zones.
-        </li>
-        <li>
-          <strong>🚨 Auto-Rescue:</strong> Critical and danger zones
-          automatically notify the rescue team with tourist location and
-          emergency contacts.
-        </li>
-        <li>
-          <strong>📍 Real-time Tracking:</strong> Continuous location monitoring
-          with distance-based proximity alerts.
-        </li>
-      </ul>
     </div>
 
     <footer>
