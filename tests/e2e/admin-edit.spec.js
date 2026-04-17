@@ -70,7 +70,14 @@ test.describe('Admin edit geofence (E2E smoke)', () => {
     await page.waitForSelector('#btn-save-fence', { timeout: 3000 });
     await page.waitForTimeout(300); // Wait for modal animation
     
-    // Wait for and click danger level radio
+    // Verify the full danger-level selector is available again
+    await page.waitForSelector('input[type="radio"][name="danger"][value="safe"]', { timeout: 3000 });
+    await page.waitForSelector('input[type="radio"][name="danger"][value="caution"]', { timeout: 3000 });
+    await page.waitForSelector('input[type="radio"][name="danger"][value="warning"]', { timeout: 3000 });
+    await page.waitForSelector('input[type="radio"][name="danger"][value="danger"]', { timeout: 3000 });
+    await page.waitForSelector('input[type="radio"][name="danger"][value="critical"]', { timeout: 3000 });
+
+    // Pick a non-safe level and save
     await page.waitForSelector('input[type="radio"][name="danger"][value="caution"]', { timeout: 3000 });
     await page.click('input[type="radio"][name="danger"][value="caution"]');
     await page.waitForTimeout(200);

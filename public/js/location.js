@@ -154,8 +154,17 @@ async function onPos(pos, map) {
             return;
         }
 
+        const params = new URLSearchParams({
+            lat: String(lat),
+            lng: String(lng)
+        });
+
+        if (isSim) {
+            params.set('sim', '1');
+        }
+
         const resp = await fetch(
-            API + '/users/check?' + new URLSearchParams({ lat: String(lat), lng: String(lng) }),
+            API + '/users/check?' + params.toString(),
             { headers: { 'Authorization': 'Bearer ' + token } }
         );
 
@@ -167,11 +176,16 @@ async function onPos(pos, map) {
         const data = await resp.json();
         console.log('Location check success:', data);
 
-        // Interpret current danger status
-        let inDanger = false;
-        if (data.inside) {
-            inDanger = data.inside.some(f => ['danger', 'critical'].includes(f.effectiveDangerLevel || f.dangerLevel));
-        }
+        // Interpret current danger status.
+        // Keep the red vignette only while inside a danger/critical zone
+        // or while inside the near-threshold buffer for those zones.
+        const inDangerZone = Array.isArray(data.inside)
+            && data.inside.some(f => ['danger', 'critical'].includes(f.effectiveDangerLevel || f.dangerLevel));
+
+        const inDangerBuffer = Array.isArray(data.near)
+            && data.near.some(f => ['danger', 'critical'].includes(f.effectiveDangerLevel || f.dangerLevel));
+
+        const inDanger = inDangerZone || inDangerBuffer;
 
         updatePath(lat, lng, map);
         updateVignette(inDanger);

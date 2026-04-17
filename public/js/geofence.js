@@ -15,6 +15,10 @@ let editingFenceId = null;
 
 export const fenceLayers = {};
 
+function canShowAiAdvice() {
+    return !!(currentUser && currentUser.role === 'tourist');
+}
+
 function formatWeather(weather) {
     if (!weather) return 'Unknown';
     if (typeof weather === 'string') return weather;
@@ -26,6 +30,23 @@ function formatWeather(weather) {
     if (weather.visibility != null) parts.push(`visibility ${weather.visibility} m`);
 
     return parts.join(', ') || 'Unknown';
+}
+
+function stripWeatherFromAdvice(text) {
+    if (!text || typeof text !== 'string') return '';
+
+    return text
+        .replace(/\s+under\s+[^.]+(?=\.)/i, '')
+        .replace(/\s+weather\s*:\s*[^.]+/i, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
+
+function formatRiskFactors(reasons) {
+    if (!Array.isArray(reasons)) return '';
+    return reasons
+        .filter((reason) => !/^weather\s*:/i.test(String(reason || '').trim()))
+        .join(', ');
 }
 
 function renderAiRiskTag(aiRisk) {
@@ -46,8 +67,8 @@ function renderAiRiskTag(aiRisk) {
         aiRisk.level === "MEDIUM" ? "#f59e0b" :
         "#10b981";
 
-    const reasonsText = Array.isArray(aiRisk.reasons) ? aiRisk.reasons.join(', ') : '';
-    const combinedAdvice = [aiRisk.reasoning, aiRisk.recommendation].filter(Boolean).join(' ');
+    const reasonsText = formatRiskFactors(aiRisk.reasons);
+    const combinedAdvice = [stripWeatherFromAdvice(aiRisk.reasoning), aiRisk.recommendation].filter(Boolean).join(' ');
     const weatherText = formatWeather(aiRisk.weather);
 
     return `
@@ -155,7 +176,7 @@ export function initGeofence(mapInstance) {
         if (!name) return alert('Enter geofence name');
         if (currentCoords.length < 3) return alert('Need at least 3 points');
 
-        await saveFenceDirect(name, description, currentCoords);
+        showDangerLevelModal(name, description, currentCoords);
 
     });
 
@@ -307,8 +328,8 @@ export async function loadFences() {
         /* ------------------ FETCH AI RISK INSIGHTS ------------------ */
 
         try {
-            // Skip bulk AI insights for admin and tourists to speed up map load.
-            if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'tourist')) {
+            // Only tourists see AI insights.
+            if (!canShowAiAdvice()) {
                 riskMap = {};
                 throw new Error('Skip AI insights for this role');
             }
@@ -413,7 +434,7 @@ export async function loadFences() {
                         aiRisk.level === "MEDIUM" ? "#f59e0b" :
                         "#10b981";
                     const combinedAdvice = [aiRisk.reasoning, aiRisk.recommendation].filter(Boolean).join(' ');
-                    const factorsText = Array.isArray(aiRisk.reasons) ? aiRisk.reasons.join(', ') : '';
+                    const factorsText = formatRiskFactors(aiRisk.reasons);
                     const weatherText = formatWeather(aiRisk.weather);
 
                     aiBlock = `
@@ -439,9 +460,8 @@ export async function loadFences() {
 
                 aiBlock = `<div id="ai-risk-${f._id}">${aiBlock}</div>`;
 
-                // Admin requested: remove AI safety insights from admin view (case-insensitive)
-                const isAdmin = currentUser && String(currentUser.role || '').toLowerCase() === 'admin';
-                if (isAdmin) {
+                // Only tourists should see AI safety insights.
+                if (!canShowAiAdvice()) {
                     aiBlock = '';
                 }
 
@@ -515,7 +535,7 @@ export async function loadFences() {
                         };
                     }
 
-                    if (!(currentUser && currentUser.role === 'admin')) {
+                    if (canShowAiAdvice()) {
                         refreshAiRiskInsight(f._id);
                     }
                 });

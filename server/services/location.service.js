@@ -46,9 +46,10 @@ async function calculateEffectiveLevel(f) {
 
 // Check location against all geofences
 
-async function checkLocation(lat, lng, user) {
+async function checkLocation(lat, lng, user, options = {}) {
     const point = turf.point([lng, lat]);
     const fences = await Geofence.find().lean();
+    const isSimulation = !!options.simulation;
 
     const inside = [];
     const near = [];
@@ -58,7 +59,7 @@ async function checkLocation(lat, lng, user) {
 
     // Calculate user speed to dynamically adjust warning distance
     let speedMs = 0;
-    if (user.currentLocation && user.currentLocation.timestamp) {
+    if (!isSimulation && user.currentLocation && user.currentLocation.timestamp) {
         const lastLat = user.currentLocation.lat;
         const lastLng = user.currentLocation.lng;
         const lastTime = user.currentLocation.timestamp.getTime();
@@ -96,7 +97,7 @@ async function checkLocation(lat, lng, user) {
 
     // Dynamic proximity threshold adjustment multiplier
     let speedMultiplier = 1;
-    if (!ignoredUpdate && speedMs > 3) { 
+    if (!isSimulation && !ignoredUpdate && speedMs > 3) { 
         // If moving faster than ~10 km/h, increase nearMeters threshold. 
         // E.g., at 13 m/s (~45 km/h), multiplier becomes 3x. Max 5x.
         const speedForThreshold = Math.min(speedMs, SPEED_FOR_THRESHOLD_CAP_MS);
@@ -223,15 +224,15 @@ async function handleEntered(user, entered, location) {
 // Handle near geofence notifications
 async function handleNear(user, near, location) {
 
-    const { generateSafetyAdvice } = require('./openrouter.service');
-
     for (const f of near) {
 
         const dLevel = f.effectiveDangerLevel || f.dangerLevel;
-        const normalizedDangerLevel = (dLevel || '').toLowerCase();
         const weatherText = f.weather && f.weather !== 'Clear'
             ? ` (Weather: ${f.weather})`
             : '';
+        const { generateSafetyAdvice } = require('./openrouter.service');
+
+        const normalizedDangerLevel = (dLevel || '').toLowerCase();
         const shouldGenerateAiAdvice = ['danger', 'critical'].includes(normalizedDangerLevel) &&
             typeof f.distanceMeters === 'number' &&
             f.distanceMeters < AI_ADVICE_TRIGGER_METERS;

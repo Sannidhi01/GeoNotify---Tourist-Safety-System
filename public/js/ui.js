@@ -176,6 +176,49 @@ export function showLogin() {
 
 let tempTimeRules = [];
 
+const DANGER_LEVELS = [
+  {
+    value: 'safe',
+    label: 'Safe Zone',
+    description: 'General tourist area',
+    color: '#4CAF50',
+    emoji: '✅'
+  },
+  {
+    value: 'caution',
+    label: 'Caution Zone',
+    description: 'Be aware',
+    color: '#FFD700',
+    emoji: '⚡'
+  },
+  {
+    value: 'warning',
+    label: 'Warning Zone',
+    description: 'Stay alert',
+    color: '#FFA500',
+    emoji: '⚠️'
+  },
+  {
+    value: 'danger',
+    label: 'Danger Zone',
+    description: 'High risk area',
+    color: '#FF0000',
+    emoji: '🚨'
+  },
+  {
+    value: 'critical',
+    label: 'Critical Zone',
+    description: 'Extreme danger',
+    color: '#8B0000',
+    emoji: '🚨'
+  }
+];
+
+function getDangerMeta(dangerLevel) {
+  const normalized = String(dangerLevel || 'safe').toLowerCase();
+  return DANGER_LEVELS.find((entry) => entry.value === normalized) || DANGER_LEVELS[0];
+}
+
 function renderTimeRules() {
   const list = document.getElementById('time-rules-list');
   if (!list) return;
@@ -214,12 +257,19 @@ export function showDangerLevelModal(name, description, currentCoords) {
       
       <h4>Zone Safety Level:</h4>
       <div class="role-selector">
-        <label class="role-option">
-          <input type="radio" name="danger" value="safe" checked>
-          <span style="color:#4CAF50;">✅ Safe Zone</span>
-          <small>General tourist area</small>
-        </label>
+        ${DANGER_LEVELS.map((level, index) => `
+          <label class="role-option">
+            <input type="radio" name="danger" value="${level.value}" ${index === 0 ? 'checked' : ''}>
+            <span style="color:${level.color};">${level.emoji} ${level.label}</span>
+            <small>${level.description}</small>
+          </label>
+        `).join('')}
       </div>
+
+      <label style="display:flex; align-items:center; margin:15px 0;">
+        <input type="checkbox" id="auto-notify" style="width:auto; margin-right:10px;">
+        <span>🚓 Auto-notify rescue team for danger/critical zones</span>
+      </label>
       
       <div style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;">
         <h4 style="margin-bottom:10px;">Manual Coordinates</h4>
@@ -247,7 +297,7 @@ export function showDangerLevelModal(name, description, currentCoords) {
                 <span>to</span>
                 <input type="time" id="rule-end" style="margin:0;">
                 <select id="rule-level" style="margin:0; padding:5px;">
-                    <option value="safe">Safe</option>
+                    ${DANGER_LEVELS.map((level) => `<option value="${level.value}">${level.label.replace(' Zone', '')}</option>`).join('')}
                 </select>
                 <button type="button" id="btn-add-timerule" 
                     style="padding:5px 12px; background:#4f46e5; color:white; border:none; border-radius:4px; cursor:pointer;">
@@ -264,6 +314,15 @@ export function showDangerLevelModal(name, description, currentCoords) {
     `;
 
   modal.style.display = 'flex';
+
+  document.querySelectorAll('input[name="danger"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const autoNotify = document.getElementById('auto-notify');
+      if (autoNotify && ['danger', 'critical'].includes(e.target.value)) {
+        autoNotify.checked = true;
+      }
+    });
+  });
 
   document.getElementById('btn-save-fence').onclick = () => saveFence(name, description, currentCoords);
   document.getElementById('btn-save-cancel').onclick = closeModal;
@@ -311,15 +370,9 @@ export function getTimeRules() {
   return tempTimeRules;
 }
 export function getDangerColor(dangerLevel) {
-  const colors = {
-    'safe': '#4CAF50'
-  };
-  return colors[dangerLevel] || '#4CAF50';
+  return getDangerMeta(dangerLevel).color;
 }
 
 export function getDangerEmoji(dangerLevel) {
-  const emojis = {
-    'safe': '✅'
-  };
-  return emojis[dangerLevel] || '✅';
+  return getDangerMeta(dangerLevel).emoji;
 }

@@ -6,8 +6,8 @@ let insightInterval = null;
 export async function initAIInsights() {
     if (!currentUser) return;
 
-    // Admin requested: do not show AI safety insights in admin UI
-    if (currentUser.role === 'admin') {
+    // Only show AI safety insights for tourists
+    if (currentUser.role !== 'tourist') {
         const list = document.getElementById('ai-insights-list');
         if (list) list.innerHTML = '';
         return;
@@ -58,7 +58,7 @@ function renderAIInsights(insights) {
                 <span class="ai-score-badge">${ris.score} / 100</span>
             </div>
             <div class="ai-body">
-                <p class="ai-reasoning"><strong>Reason:</strong> ${ris.reasoning}</p>
+                <p class="ai-reasoning"><strong>Reason:</strong> ${stripWeatherFromAdvice(ris.reasoning)}</p>
                 <div class="ai-recommendation-box" style="margin-top:8px; padding:8px; background:white; border-radius:4px; font-weight:500;">
                    💡 ${ris.recommendation}
                 </div>
@@ -79,6 +79,16 @@ function formatWeather(w) {
     if (w.temp != null) parts.push(`${w.temp}°C`);
     if (w.wind_speed != null) parts.push(`wind ${w.wind_speed} m/s`);
     return parts.join(', ') || JSON.stringify(w);
+}
+
+function stripWeatherFromAdvice(text) {
+    if (!text || typeof text !== 'string') return '';
+
+    return text
+        .replace(/\s+under\s+[^.]+(?=\.)/i, '')
+        .replace(/\s+weather\s*:\s*[^.]+/i, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 }
 
 // Function to update individual geofence risk (called from geofence.js)

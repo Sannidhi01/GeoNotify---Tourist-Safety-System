@@ -8,6 +8,24 @@ const { generateSafetyAdvice } = require('./openrouter.service');
 // Actually, let's just copy the logic or use it if safe.
 const { getEffectiveDangerLevel, calculateEffectiveLevel } = require('./location.service');
 
+function formatWeatherSummary(weather) {
+    if (!weather) return 'Clear';
+    if (typeof weather === 'string') return weather;
+    if (Array.isArray(weather)) {
+        return weather.map(formatWeatherSummary).filter(Boolean).join(', ') || 'Clear';
+    }
+
+    const parts = [];
+    if (typeof weather.state === 'string' && weather.state.trim()) parts.push(weather.state.trim());
+    if (typeof weather.main === 'string' && weather.main.trim() && weather.main !== weather.state) parts.push(weather.main.trim());
+    if (typeof weather.description === 'string' && weather.description.trim() && weather.description !== weather.state) parts.push(weather.description.trim());
+    if (weather.temp != null && Number.isFinite(Number(weather.temp))) parts.push(`${Number(weather.temp)} C`);
+    if (weather.wind_speed != null && Number.isFinite(Number(weather.wind_speed))) parts.push(`wind ${Number(weather.wind_speed)} m/s`);
+    if (weather.visibility != null && Number.isFinite(Number(weather.visibility))) parts.push(`visibility ${Number(weather.visibility)} m`);
+
+    return parts.join(', ') || 'Clear';
+}
+
 function buildFallbackSafetyAdvice({ geofenceName, baseDangerLevel, effectiveDangerLevel, weather, hour, incidentCount, hotspotsOccurred }) {
     const base = (baseDangerLevel || '').toString().toLowerCase();
     const effective = (effectiveDangerLevel || base || 'safe').toString().toLowerCase();
@@ -188,7 +206,8 @@ async function calculateRiskScore(geofenceId) {
     reasons.push(`${f.dangerLevel.toUpperCase()} Zone`);
     if (logs.length > 0) reasons.push(`${logs.length} incidents`);
     if (hotspotsOccurred) reasons.push("⚠️ Hazard Hotspots");
-    if (weather !== 'Clear') reasons.push(`Weather: ${weather}`);
+    const weatherSummary = formatWeatherSummary(weather);
+    if (weatherSummary !== 'Clear') reasons.push(`Weather: ${weatherSummary}`);
 
     return {
         geofenceId: f._id,

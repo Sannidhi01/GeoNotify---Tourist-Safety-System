@@ -27,6 +27,7 @@ router.get('/check', requireAuth, async (req, res) => {
 
         const lat = parseFloat(req.query.lat);
         const lng = parseFloat(req.query.lng);
+        const isSimulation = String(req.query.sim || '').toLowerCase() === '1';
 
         if (Number.isNaN(lat) || Number.isNaN(lng)) {
             return res.status(400).json({ error: "Valid lat & lng required" });
@@ -62,7 +63,7 @@ router.get('/check', requireAuth, async (req, res) => {
             fences,
             ignoredUpdate,
             anomalyDetails
-        } = await checkLocation(lat, lng, user);
+        } = await checkLocation(lat, lng, user, { simulation: isSimulation });
 
         if (ignoredUpdate) {
             return res.status(202).json({
