@@ -7,9 +7,10 @@ test.describe('Admin edit geofence (E2E smoke)', () => {
   test('admin can create and edit a geofence', async ({ page }) => {
     test.setTimeout(60000); // Increase timeout to 60s for complex E2E operations
     await page.goto('http://localhost:3000');
+    await page.waitForLoadState('networkidle');
 
     // Open login modal
-    await page.click('text=Login');
+    await page.click('#login-btn');
     
     // Wait for auth modal to be visible and fully rendered
     await page.waitForSelector('#auth-modal', { visible: true, timeout: 5000 });
