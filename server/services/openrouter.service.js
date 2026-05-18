@@ -32,17 +32,12 @@ function buildFallbackAdvice(context = {}) {
     };
 }
 
-async function getOllamaFallback(context) {
-    const { generateSafetyAdvice: generateOllamaAdvice } = require('./ollama.service');
-    return await generateOllamaAdvice(context) || buildFallbackAdvice(context);
-}
-
 async function generateSafetyAdvice(context) {
     const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
-        console.warn("OPENROUTER_API_KEY missing. Falling back to Ollama.");
-        return getOllamaFallback(context);
+        console.warn("OPENROUTER_API_KEY missing. Using deterministic fallback advice.");
+        return buildFallbackAdvice(context);
     }
 
     const {
@@ -131,14 +126,14 @@ Respond ONLY in JSON:
         if (!response.ok) {
             const message = data?.error?.message || `HTTP ${response.status}`;
             console.warn("OpenRouter API error:", message);
-            return getOllamaFallback(context);
+            return buildFallbackAdvice(context);
         }
 
         const content = data?.choices?.[0]?.message?.content?.trim();
 
         if (!content) {
             console.warn("OpenRouter returned empty response");
-            return getOllamaFallback(context);
+            return buildFallbackAdvice(context);
         }
 
         console.log("AI Logic: OpenRouter response received");
@@ -148,7 +143,7 @@ Respond ONLY in JSON:
             const json = content.replace(/```json|```/g, "").trim();
             const parsed = JSON.parse(json);
             if (!parsed || !parsed.recommendation) {
-                return getOllamaFallback(context);
+                return buildFallbackAdvice(context);
             }
             return parsed;
 
@@ -156,11 +151,7 @@ Respond ONLY in JSON:
 
             console.warn("AI JSON parse failed. Raw output:", content);
 
-            const fallback = await getOllamaFallback(context);
-            return fallback || {
-                reasoning: "AI generated safety insight",
-                recommendation: content.substring(0, 120)
-            };
+            return buildFallbackAdvice(context);
 
         }
 
@@ -172,7 +163,7 @@ Respond ONLY in JSON:
             console.error("OpenRouter API error:", err.message);
         }
 
-        return getOllamaFallback(context);
+        return buildFallbackAdvice(context);
     }
 }
 
