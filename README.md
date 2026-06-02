@@ -28,7 +28,7 @@ It includes three working panels:
 - JWT authentication
 - Leaflet map UI
 - Turf.js for geospatial checks
-- Web Push, Twilio SMS, and Firebase Admin support
+- Web Push, Twilio SMS
 - Jest and Playwright for testing
 
 ## Prerequisites
